@@ -19,6 +19,57 @@ static inline BLOCK increment(BLOCK b) {
     b = _mm_slli_epi32(b, 1);
     return _mm_xor_si128(b,t);
 }
+#define REDUCTION_POLYNOMIAL  _mm_set_epi32(0, 0, 0, 135)
+#define accumulate_eight(x, y) { \
+    x[0] = XOR(x[0], x[1]); \
+    x[2] = XOR(x[2], x[3]); \
+    x[4] = XOR(x[4], x[5]); \
+    x[6] = XOR(x[6], x[7]); \
+    x[0] = XOR(x[0], x[2]); \
+    x[4] = XOR(x[4], x[6]); \
+    y    = XOR(x[0], x[4]); \
+}
+static inline __m128i gf_2_128_double_eight(__m128i hash, __m128i x[8]) {
+    __m128i tmp[8];
+    tmp[0] = _mm_srli_epi64(hash, 56);
+    tmp[1] = _mm_srli_epi64(x[0], 57);
+    tmp[2] = _mm_srli_epi64(x[1], 58);
+    tmp[3] = _mm_srli_epi64(x[2], 59);
+    tmp[4] = _mm_srli_epi64(x[3], 60);
+    tmp[5] = _mm_srli_epi64(x[4], 61);
+    tmp[6] = _mm_srli_epi64(x[5], 62);
+    tmp[7] = _mm_srli_epi64(x[6], 63);
+
+    __m128i sum;
+    accumulate_eight(tmp, sum);
+
+    // ---------------------------------------------------------------------
+    // sum = sum_high || sum_low
+    // We have to take sum_high * 135 and XOR it to our XOR sum to have the
+    // Reduction term. The 0x01 indicates that sum_high is used.
+    // ---------------------------------------------------------------------
+
+    __m128i mod =  _mm_clmulepi64_si128(sum, REDUCTION_POLYNOMIAL, 0x01);
+
+    // Move sum_low to the upper 64-bit half
+    __m128i sum_low = _mm_bslli_si128(sum, 8);
+
+    tmp[0] = _mm_slli_epi64(hash, 8);
+    tmp[1] = _mm_slli_epi64(x[0], 7);
+    tmp[2] = _mm_slli_epi64(x[1], 6);
+    tmp[3] = _mm_slli_epi64(x[2], 5);
+    tmp[4] = _mm_slli_epi64(x[3], 4);
+    tmp[5] = _mm_slli_epi64(x[4], 3);
+    tmp[6] = _mm_slli_epi64(x[5], 2);
+    tmp[7] = _mm_slli_epi64(x[6], 1);
+
+    accumulate_eight(tmp, sum);
+    sum = XOR(sum, sum_low);
+    sum = XOR(sum, mod);
+    sum = XOR(sum, x[7]);
+    return sum;
+}
+
 
 int prp_encrypt(prp_ctx     * restrict ctx,
                const void *pt,
@@ -90,14 +141,15 @@ int prp_encrypt(prp_ctx     * restrict ctx,
         X = XOR(X, States[5]);
         X = XOR(X, States[6]);
         X = XOR(X, States[7]);
-        Y = increment(Y);Y = XOR(Y, States[0]);  
-        Y = increment(Y);Y = XOR(Y, States[1]);  
-        Y = increment(Y);Y = XOR(Y, States[2]);  
-        Y = increment(Y);Y = XOR(Y, States[3]);  
-        Y = increment(Y);Y = XOR(Y, States[4]);  
-        Y = increment(Y);Y = XOR(Y, States[5]);  
-        Y = increment(Y);Y = XOR(Y, States[6]);  
-        Y = increment(Y);Y = XOR(Y, States[7]);  
+        Y = gf_2_128_double_eight(Y, States);
+        /* Y = increment(Y);Y = XOR(Y, States[0]); */  
+        /* Y = increment(Y);Y = XOR(Y, States[1]); */  
+        /* Y = increment(Y);Y = XOR(Y, States[2]); */  
+        /* Y = increment(Y);Y = XOR(Y, States[3]); */  
+        /* Y = increment(Y);Y = XOR(Y, States[4]); */  
+        /* Y = increment(Y);Y = XOR(Y, States[5]); */  
+        /* Y = increment(Y);Y = XOR(Y, States[6]); */  
+        /* Y = increment(Y);Y = XOR(Y, States[7]); */  
 
         index += BPI;
         --iters;
@@ -169,14 +221,16 @@ int prp_encrypt(prp_ctx     * restrict ctx,
         X = XOR(X, States[5]);
         X = XOR(X, States[6]);
         X = XOR(X, States[7]);
-        Y = increment(Y);Y = XOR(Y, States[0]);  
-        Y = increment(Y);Y = XOR(Y, States[1]);  
-        Y = increment(Y);Y = XOR(Y, States[2]);  
-        Y = increment(Y);Y = XOR(Y, States[3]);  
-        Y = increment(Y);Y = XOR(Y, States[4]);  
-        Y = increment(Y);Y = XOR(Y, States[5]);  
-        Y = increment(Y);Y = XOR(Y, States[6]);  
-        Y = increment(Y);Y = XOR(Y, States[7]);  
+
+        Y = gf_2_128_double_eight(Y, States);
+        /* Y = increment(Y);Y = XOR(Y, States[0]); */  
+        /* Y = increment(Y);Y = XOR(Y, States[1]); */  
+        /* Y = increment(Y);Y = XOR(Y, States[2]); */  
+        /* Y = increment(Y);Y = XOR(Y, States[3]); */  
+        /* Y = increment(Y);Y = XOR(Y, States[4]); */  
+        /* Y = increment(Y);Y = XOR(Y, States[5]); */  
+        /* Y = increment(Y);Y = XOR(Y, States[6]); */  
+        /* Y = increment(Y);Y = XOR(Y, States[7]); */  
 
         index += BPI;
         --iters;
@@ -346,14 +400,15 @@ int prp_encrypt(prp_ctx     * restrict ctx,
         X = XOR(X, States[5]);
         X = XOR(X, States[6]);
         X = XOR(X, States[7]);
-        Y = increment(Y);Y = XOR(Y, States[0]);  
-        Y = increment(Y);Y = XOR(Y, States[1]);  
-        Y = increment(Y);Y = XOR(Y, States[2]);  
-        Y = increment(Y);Y = XOR(Y, States[3]);  
-        Y = increment(Y);Y = XOR(Y, States[4]);  
-        Y = increment(Y);Y = XOR(Y, States[5]);  
-        Y = increment(Y);Y = XOR(Y, States[6]);  
-        Y = increment(Y);Y = XOR(Y, States[7]);  
+        Y = gf_2_128_double_eight(Y, States);
+        /* Y = increment(Y);Y = XOR(Y, States[0]); */  
+        /* Y = increment(Y);Y = XOR(Y, States[1]); */  
+        /* Y = increment(Y);Y = XOR(Y, States[2]); */  
+        /* Y = increment(Y);Y = XOR(Y, States[3]); */  
+        /* Y = increment(Y);Y = XOR(Y, States[4]); */  
+        /* Y = increment(Y);Y = XOR(Y, States[5]); */  
+        /* Y = increment(Y);Y = XOR(Y, States[6]); */  
+        /* Y = increment(Y);Y = XOR(Y, States[7]); */  
 
         index += BPI;
         --iters;
