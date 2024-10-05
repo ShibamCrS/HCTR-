@@ -29,7 +29,7 @@
 
 //One round AES on 4 parallel blocks
 #define ONE_ROUND( s, subkey, tweak , Round )\
-    s[1] = ENC( s[0] , XOR(subkey, tweak[Round][0] ) );\
+    s[0] = ENC( s[0] , XOR(subkey, tweak[Round][0] ) );\
     s[1] = ENC( s[1] , XOR(subkey, tweak[Round][1] ) );\
     s[2] = ENC( s[2] , XOR(subkey, tweak[Round][2] ) );\
     s[3] = ENC( s[3] , XOR(subkey, tweak[Round][3] ) );\

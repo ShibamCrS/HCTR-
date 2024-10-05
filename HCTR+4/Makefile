@@ -26,9 +26,3 @@ clean:
 clean-all:
 	rm -f deoxys hctr+phash_validation hctr+zhash_validation hctr+phash_benchmark hctr+zhash_benchmark
 	rm -rf timedata
-# DO NOT DELETE
-
-hctr+benchmark: ./include/setup.h ./include/init.h ./include/setup.h
-hctr+benchmark: ./include/deoxysbc.h ./include/timedefs.h
-hctr+validation: ./include/setup.h ./include/init.h ./include/setup.h
-hctr+validation: ./include/deoxysbc.h

@@ -233,7 +233,9 @@ int prp_encrypt(prp_ctx     * restrict ctx,
         Y = increment(Y);Y = XOR(Y, S);  
     }
     //Handel Length 
-    S = _mm_set_epi64x(pt_len, tk_len);
+    uint64_t len1 = pt_len*8; 
+    uint64_t len2 = tk_len*8; 
+    S = _mm_set_epi64x(len1, len2);
     S = XOR(Ll, S);
     TAES(S, ctx->round_keys_h, Lr, t);
     X = XOR(X, S);
@@ -397,7 +399,10 @@ int prp_encrypt(prp_ctx     * restrict ctx,
         Y = increment(Y);Y = XOR(Y, S);  
     }
     //Handel Length 
-    S = _mm_set_epi64x(pt_len, tk_len);
+    len1 = pt_len*8; 
+    len2 = tk_len*8; 
+    S = _mm_set_epi64x(len1, len2);
+
     S = XOR(Ll, S);
     TAES(S, ctx->round_keys_h, Lr, t);
     X = XOR(X, S);

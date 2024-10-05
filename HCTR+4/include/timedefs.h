@@ -1,3 +1,4 @@
+#include <stdio.h>
 #define TIME_TEST 1 /*if measuring time then 1 else 0 */
 
 #define CACHE_WARM_ITER 1024
@@ -6,7 +7,7 @@
 	#define MAX_ITER 1024
 #endif
 
-#define M 17
+#define M 16
 
 #define N 128
 
@@ -109,14 +110,14 @@ void getCompilerConfig(char *outp) {
 int getTime(char *infoString, char *filename) {
     /* Allocate locals */
     ALIGN(16) char pt[65536] = {0};
-    ALIGN(16) unsigned char tk[]   = "abcdefghijklmnopabcdefghijklmnop";  //2n bit tweak
+    ALIGN(16) unsigned char tk[512];
     ALIGN(16) unsigned char key[] = "abcdefghijklmnop";
     char outbuf[MAX_ITER*15+1024];
     
     int iter_list[2048]; /* Populate w/ test lengths, -1 terminated */
     prp_ctx *ctx = prp_allocate(NULL);
     char *outp = outbuf;
-    int i, j, len, tk_len = 2*16;
+    int i, j, len, tk_len = 512;
     double Hz;
     double ipi=0, tmpd;
     
@@ -199,13 +200,13 @@ int getTimeMy(char *infoString, char *filename) {
     
     prp_ctx *ctx = prp_allocate(NULL);
     char *outp = outbuf;
-    int i, j, len, tk_len;
+    int i, j, len, twk_len;
     double Hz;
     double ipi=0, tmpd;
     
     /* populate iter_list, terminate list with negative number */
-    int msg_len_list[EXP] = {32, 64, 128, 256, 512, 1024, 2048, 4096, 8192, 16384, 32768, 65536, -1}; 
-    int twk_len_list[EXP] = {0, 16, 32, 64, 128, 256, 512, 1024, 2048, 4096, 8192, 16384, 32768, 65536, -1}; 
+    int msg_len_list[EXP] = {128, 256, 512, 1024, 2048, 4096, 8192, 16384, 32768, 65536, -1}; 
+    int twk_len_list[EXP] = {0, 16, 32, 64, 128, 256, 512, -1}; 
 
     FILE *fp = fopen(filename, "w");
     char str_time[25];
@@ -230,18 +231,19 @@ int getTimeMy(char *infoString, char *filename) {
      * Get times over different lengths
      */
     
+    outp += sprintf(outp,        "MsgLen TwkLen CPB   \n");
     i = 0;
     len = msg_len_list[i];
     while (len >= 0) {
         j=0;
-        tk_len = twk_len_list[j];
-        while(tk_len >= 0) {
-            tk[tk_len - 2] = 0;
-            DO(prp_encrypt(ctx, pt, len, tk, tk_len, pt, 1); tk[tk_len - 2] += 1);
-            tmpd = ((median_get())/((len+tk_len)*(double)N));
-            outp += sprintf(outp, "%5d %5d  %6.2f\n", len, tk_len, tmpd);
+        twk_len = twk_len_list[j];
+        while(twk_len >= 0) {
+            tk[twk_len - 2] = 0;
+            DO(prp_encrypt(ctx, pt, len, tk, twk_len, pt, 1); tk[twk_len - 2] += 1);
+            tmpd = ((median_get())/((double)(len+twk_len)*(double)N));
+            outp += sprintf(outp, "%5d %5d  %6.2f\n", len, twk_len, tmpd);
             ++j;
-            tk_len = twk_len_list[j];
+            twk_len = twk_len_list[j];
         }
         ++i;
         len = msg_len_list[i];

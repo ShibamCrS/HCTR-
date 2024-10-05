@@ -14,6 +14,32 @@ void printreg(const void *a, int nrof_byte){
     }
     printf("\n");
 }
+void test_parallel_4(unsigned char *p, unsigned char *t, __m128i *ekey){
+    /* for(int i=0; i<=DEOXYS_BC_128_256_NUM_ROUNDS; i++) printreg(&ekey[i], 16); */
+    __m128i state = _mm_load_si128((__m128i*)p);
+    __m128i tweak = _mm_load_si128((__m128i*)t);
+    /* printreg(&state, 16); */
+    /* printreg(&tweak, 16); */
+
+    __m128i RT[8][4];
+    __m128i States[4];
+    RT[0][0] = tweak; States[0] = state;
+    RT[0][1] = tweak; States[1] = state;
+    RT[0][2] = tweak; States[2] = state;
+    RT[0][3] = tweak; States[3] = state;
+
+    for(int i=1; i<8; i++){ //UPDATE_TWEAK
+        RT[i][0] = PERMUTE(RT[i-1][0]);
+        RT[i][1] = PERMUTE(RT[i-1][1]);
+        RT[i][2] = PERMUTE(RT[i-1][2]);
+        RT[i][3] = PERMUTE(RT[i-1][3]);
+    }
+    DEOXYS( States, ekey, RT )
+    printreg(&States[0], 16);
+    printreg(&States[1], 16);
+    printreg(&States[2], 16);
+    printreg(&States[3], 16);
+}
 
 int main() {
     ALIGN(16) unsigned char mkey[16] = {0x2B,0x7E,0x15,0x16,0x28,0xAE,0xD2,0xA6,0xAB,0xF7,0x15,0x88,0x09,0xCF,0x4F,0x3C};
@@ -31,6 +57,11 @@ int main() {
         
     DEOXYS_128_256_setup_key_decryption(dkey, ekey);
     DEOXYS_128_256_setup_key_decryption(dtweak, etweak);
+    
+    for(int i=0; i<=DEOXYS_BC_128_256_NUM_ROUNDS; i++) printreg(&ekey[i], 16);
+    printf("---------------------------------------\n");
+    for(int i=0; i<=DEOXYS_BC_128_256_NUM_ROUNDS; i++) printreg(&dkey[i], 16);
+    printf("---------------------------------------\n");
     for(int i=0; i<=DEOXYS_BC_128_256_NUM_ROUNDS; i++) printreg(&etweak[i], 16);
     printf("---------------------------------------\n");
     for(int i=0; i<=DEOXYS_BC_128_256_NUM_ROUNDS; i++) printreg(&dtweak[i], 16);
@@ -43,6 +74,10 @@ int main() {
     printreg(c, 16);
     DEOXYS_128_256_decrypt(dkey, dtweak, c, p);
     printreg(p, 16);
+
+    printf("----------------------------------------------------\n");
+    test_parallel_4(p, tweak, ekey);
+    printf("----------------------------------------------------\n");
 
     __m128i S, T, t;
     T = _mm_load_si128 ((BLOCK*)tweak);
