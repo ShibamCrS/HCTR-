@@ -7,30 +7,42 @@
 #include "../include/setup.h"
 #include "../include/deoxysbc.h"
 #include "../include/init.h"
+void printreg_init(const void *a, int nrof_byte){
+    int i;
+    unsigned char *f = (unsigned char *)a;
+    for(i=0; i < nrof_byte; i++){
+        printf("%02X",(unsigned char) f[nrof_byte - 1 -i]); //uint8_t c[4+8];
+        if(nrof_byte > 16) if((i%16) == 15) printf(" ");
+    }
+    printf("\n");
+}
 
 int prp_init(prp_ctx *ctx, const void *mkey, int key_len, int tk_len){
     //First schedule key, which will be used to generate other keys
     BLOCK round_keys [DEOXYS_BC_128_256_NUM_ROUND_KEYS];
     DEOXYS_128_256_setup_key(mkey, round_keys);
     
+    __m512i round_keys4[DEOXYS_BC_128_256_NUM_ROUND_KEYS];
+    for(int i=0; i<=DEOXYS_BC_128_256_NUM_ROUNDS; i++) 
+        round_keys4[i] = _mm512_broadcast_i32x4(round_keys[i]);
+
     //At first derive 4 keys in parallel
-    BLOCK RT[8][4], States[4], S1, S2, T, t;
+    BLOCK States[4], S1, S2, T, t;
     T = FOUR;
-
-    BLOCK ctr = ZERO();
-
-    for(int i=0; i<8; i++){ //UPDATE_TWEAK
-        RT[i][0] = T;
-        RT[i][1] = T;
-        RT[i][2] = T;
-        RT[i][3] = T;
-        T = PERMUTE(T);
+    BLOCK4 RT[8];
+    RT[0] = _mm512_broadcast_i32x4(T);
+    for(int i=1; i<8; i++){ //UPDATE_TWEAK
+        RT[i] = PERMUTE_512(RT[i-1]);
     }
-    ctr =  ADD_ONE(ctr); States[0] = ctr;
-    ctr =  ADD_ONE(ctr); States[1] = ctr;
-    ctr =  ADD_ONE(ctr); States[2] = ctr;
-    ctr =  ADD_ONE(ctr); States[3] = ctr;
-    DEOXYS( States, round_keys, RT )
+    
+    __m512i state = CTR4321;
+    /* printreg_init(&state, 64); */
+    DEOXYS( state, round_keys4, RT )
+    
+    States[0] = _mm512_extracti32x4_epi32(state, 0);
+    States[1] = _mm512_extracti32x4_epi32(state, 1);
+    States[2] = _mm512_extracti32x4_epi32(state, 2);
+    States[3] = _mm512_extracti32x4_epi32(state, 3);
 
     DEOXYS_128_256_setup_key((unsigned char *)(&States[0]),  ctx->round_keys_1);
     DEOXYS_128_256_setup_key((unsigned char *)(&States[1]),  ctx->round_keys_2);
@@ -43,8 +55,8 @@ int prp_init(prp_ctx *ctx, const void *mkey, int key_len, int tk_len){
     DEOXYS_128_256_setup_key_decryption(ctx->round_keys_d_4, ctx->round_keys_4);
 
     //Now derive k_h and k_c
-    S1 = ADD_ONE(ctr);
-    S2 = ADD_ONE(S1);
+    S1 = _mm_set_epi32(0,0,0,5);
+    S2 = _mm_set_epi32(0,0,0,6);
     T = FOUR;
     TAES(S1, round_keys, T, t);
     TAES(S2, round_keys, T, t);

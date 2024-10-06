@@ -25,17 +25,27 @@ void printkey(BLOCK *key) {
     printf("----------------------------------------------------------------\n");
 }
 void printkeys(prp_ctx     * restrict ctx) {
-   printkey(ctx->round_keys_1); 
-   printkey(ctx->round_keys_2); 
-   printkey(ctx->round_keys_3); 
-   printkey(ctx->round_keys_4); 
-   printkey(ctx->round_keys_h); 
-   printkey(ctx->round_keys_c); 
+   printkey(ctx->round_keys_1);
+   printkey(ctx->round_keys_2);
+   printkey(ctx->round_keys_3);
+   printkey(ctx->round_keys_4);
+   printkey(ctx->round_keys_h);
+   printkey(ctx->round_keys_c);
 }
 
 #define VAL_LEN  128
 #define TWK_LEN  1024
 void simple_time_test() {
+    __m128i OO  = _mm_set_epi32(0,0,0,1);
+    /* __m512i CTR = _mm512_set_epi64(0, 4, 0, 3, 0, 2, 0, 1); */
+    /* __m512i ZERO4 =  _mm512_setzero_si512(); */
+    /* printreg(&OO, 16); */
+    /* printreg(&ZERO4, 64); */
+    __m512i ctr4 = CTR4321;
+    printreg(&ctr4, 64);
+    __m128i ctr = _mm512_extracti32x4_epi32(ctr4, 3);
+    printreg(&ctr, 16);
+
     ALIGN(16) unsigned char key[16] = {0x2B,0x7E,0x15,0x16,0x28,0xAE,0xD2,0xA6,0xAB,0xF7,0x15,0x88,0x09,0xCF,0x4F,0x3C};
 
     ALIGN(16) unsigned char tk[TWK_LEN];
@@ -48,8 +58,8 @@ void simple_time_test() {
 
     prp_ctx *ctx = prp_allocate(NULL);
     int suc = prp_init(ctx, key, 16, 16);
-    /* printf("Success Allocation %d \n", suc); */
     printkeys(ctx);
+    /* printf("Success Allocation %d \n", suc); */
 
     prp_encrypt(ctx,pt,VAL_LEN,tk,TWK_LEN,ct, 1);
     prp_encrypt(ctx,ct,VAL_LEN,tk,TWK_LEN,dt, 0);

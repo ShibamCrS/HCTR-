@@ -10,6 +10,7 @@
 #include "../include/deoxysbc.h"
 #include "../include/init.h"
 /* #define PRINT */
+
 void printregm(const void *a, int nrof_byte){
     int i;
     unsigned char *f = (unsigned char *)a;
@@ -76,57 +77,68 @@ int prp_encrypt(prp_ctx     * restrict ctx,
                void       *ct,
                int        encrypt)
 {
-    unsigned i, j, k, remaining=0, iters, npblks, index, local_len;
+    unsigned i, j, k, remaining=0, iters, npblks, index, local_len, index4;
     BLOCK       * restrict ctp = (BLOCK *)ct;
     const BLOCK * restrict ptp = (BLOCK *)pt;
     const BLOCK * restrict tkp = (BLOCK *)tk;
+
+    const BLOCK4 * restrict tkp4 = (BLOCK4 *)tkp;
+    const BLOCK4 * restrict ptp4 = (BLOCK4 *)(ptp + 2);
+          BLOCK4 * restrict ctp4 = (BLOCK4 *)(ctp + 2);
+
     BLOCK X, Y, Z, W, ctr;
     BLOCK T, t, S;
+    BLOCK States[BPI];
     npblks = 16*BPI;
 
-    BLOCK RT[8][BPI];
-    BLOCK States[BPI];
-
+    BLOCK4 RT[8];
+    BLOCK4 state, ctr4;
+    
+    __m512i round_keys_h[DEOXYS_BC_128_256_NUM_ROUND_KEYS];
+    __m512i round_keys_c[DEOXYS_BC_128_256_NUM_ROUND_KEYS];
+    for(int i=0; i<=DEOXYS_BC_128_256_NUM_ROUNDS; i++){
+        round_keys_h[i] = _mm512_broadcast_i32x4(ctx->round_keys_h[i]);
+        round_keys_c[i] = _mm512_broadcast_i32x4(ctx->round_keys_c[i]);
+    }
 /* --------------- The Upper Hash using PMAC2x -------------------------*/
 /* --------------------------------- Process Tweaks -------------------------*/
     local_len = tk_len;
-    index = 0;
+    index  = 0;
+    index4 = 0;
     iters = local_len/npblks;
     X = ZERO();
     Y = ZERO();
-    ctr = ZERO();
+    ctr4 = CTR4321;
     while (iters) {
-        ctr =  ADD_ONE(ctr); RT[0][0] = ctr;
-        ctr =  ADD_ONE(ctr); RT[0][1] = ctr;
-        ctr =  ADD_ONE(ctr); RT[0][2] = ctr;
-        ctr =  ADD_ONE(ctr); RT[0][3] = ctr;
-            
-        /* for(i=1; i<8; i++) UPDATE_TWEAK(RT, i); */
-        for(i=1; i<8; i++){ //UPDATE_TWEAK 
-            RT[i][0] = PERMUTE(RT[i-1][0]);
-            RT[i][1] = PERMUTE(RT[i-1][1]);
-            RT[i][2] = PERMUTE(RT[i-1][2]);
-            RT[i][3] = PERMUTE(RT[i-1][3]);
-        }
-        States[0] = tkp[index  ];
-        States[1] = tkp[index+1];
-        States[2] = tkp[index+2];
-        States[3] = tkp[index+3];
-        DEOXYS( States, ctx->round_keys_h, RT )   
+        RT[0]  = ctr4;
+        ctr4   =  ADD4444(ctr4);
         
+        for(i=1; i<8; i++){ //UPDATE_TWEAK 
+            RT[i] = PERMUTE_512(RT[i-1]);
+        }
+        state = tkp4[index4];
+        DEOXYS( state, round_keys_h, RT )   
+        
+        States[0] = _mm512_extracti32x4_epi32(state, 0);
+        States[1] = _mm512_extracti32x4_epi32(state, 1);
+        States[2] = _mm512_extracti32x4_epi32(state, 2);
+        States[3] = _mm512_extracti32x4_epi32(state, 3);
+
         X = XOR(X, States[0]);
         X = XOR(X, States[1]);
         X = XOR(X, States[2]);
         X = XOR(X, States[3]);
         Y = gf_2_128_double_four(Y, States);
 
-        index += BPI;
+        index  += BPI;
+        index4 += 1;
         --iters;
     }
+    ctr = _mm512_extracti32x4_epi32(ctr4, 0);
     
     remaining = local_len % npblks;
     while (remaining >= 16) {
-        ctr = ADD_ONE(ctr); T = ctr; S = tkp[index];
+        T = ctr; ctr = ADD_ONE(ctr); S = tkp[index];
         TAES(S, ctx->round_keys_h, T, t);
         X = XOR(X, S);
         Y = increment(Y); Y = XOR(Y, S); 
@@ -134,13 +146,13 @@ int prp_encrypt(prp_ctx     * restrict ctx,
         remaining -= 16;
     }
     if (remaining > 0) { //If the last block is not full
-        ctr = ADD_ONE(ctr); T = ctr; //DomainSep
+        T = ctr; ctr = ADD_ONE(ctr);
         S = ZERO();
         memcpy(&S, tkp+index, remaining); //With 0* padding
         TAES(S, ctx->round_keys_h, T, t);
         X = XOR(X, S);
         Y = increment(Y); Y = XOR(Y, S); 
-    } 
+    }
     
     BLOCK HT0 = X;
     BLOCK HT1 = Y;
@@ -148,25 +160,25 @@ int prp_encrypt(prp_ctx     * restrict ctx,
 /*-----------------------Process Plaintexts----------------------------*/
     local_len = (pt_len - 2*16); //First two message block will be used later
     index = 2; //First two message block will be used later
+    index4 = 0;
     iters = local_len/npblks;
     ctr = XOR(ctr, TWO); //Domain Seperateation indication: plaintext domain
+    ctr4 = _mm512_broadcast_i32x4(ctr);
+    ctr4 = ADD3210(ctr4);
     while (iters) {
-        ctr =  ADD_ONE(ctr); RT[0][0] = ctr;
-        ctr =  ADD_ONE(ctr); RT[0][1] = ctr;
-        ctr =  ADD_ONE(ctr); RT[0][2] = ctr;
-        ctr =  ADD_ONE(ctr); RT[0][3] = ctr;
+        RT[0]  = ctr4;
+        ctr4   =  ADD4444(ctr4);
         
         for(i=1; i<8; i++){ //UPDATE_TWEAK 
-            RT[i][0] = PERMUTE(RT[i-1][0]);
-            RT[i][1] = PERMUTE(RT[i-1][1]);
-            RT[i][2] = PERMUTE(RT[i-1][2]);
-            RT[i][3] = PERMUTE(RT[i-1][3]);
+            RT[i] = PERMUTE_512(RT[i-1]);
         }
-        States[0] = ptp[index  ];
-        States[1] = ptp[index+1];
-        States[2] = ptp[index+2];
-        States[3] = ptp[index+3];
-        DEOXYS( States, ctx->round_keys_h, RT )   
+        state = ptp4[index4];
+        DEOXYS( state, round_keys_h, RT )   
+        
+        States[0] = _mm512_extracti32x4_epi32(state, 0);
+        States[1] = _mm512_extracti32x4_epi32(state, 1);
+        States[2] = _mm512_extracti32x4_epi32(state, 2);
+        States[3] = _mm512_extracti32x4_epi32(state, 3);
         
         X = XOR(X, States[0]);
         X = XOR(X, States[1]);
@@ -174,19 +186,15 @@ int prp_encrypt(prp_ctx     * restrict ctx,
         X = XOR(X, States[3]);
 
         Y = gf_2_128_double_four(Y, States);
-        /* Y = increment(Y);Y = XOR(Y, States[0]); */  
-        /* Y = increment(Y);Y = XOR(Y, States[1]); */  
-        /* Y = increment(Y);Y = XOR(Y, States[2]); */  
-        /* Y = increment(Y);Y = XOR(Y, States[3]); */  
-
-        index += BPI;
+        index  += BPI;
+        index4 += 1;
         --iters;
     }
+    ctr = _mm512_extracti32x4_epi32(ctr4, 0);
     
     remaining = local_len % npblks;
     while (remaining >= 16) {
-        /* printf("Remaining = %d index = %d =============\n", remaining, index); */
-        ctr = ADD_ONE(ctr); T = ctr;
+        T = ctr; ctr = ADD_ONE(ctr); 
         S = ptp[index];
         TAES(S, ctx->round_keys_h, T, t);
         X = XOR(X, S);
@@ -195,14 +203,13 @@ int prp_encrypt(prp_ctx     * restrict ctx,
         remaining -= 16;
     }
     if (remaining > 0) { //If the last block is not full
-        ctr = ADD_ONE(ctr); T = ctr;
+        T = ctr; ctr = ADD_ONE(ctr);
         S = ZERO();
         memcpy(&S, ptp+index, remaining);
         TAES(S, ctx->round_keys_h, T, t);
         X = XOR(X, S);
         Y = increment(Y);Y = XOR(Y, S);  
     }
-    ctr = ADD_ONE(ctr);
     T = XOR(ctr, ONE);
     
     //Handel Length 
@@ -263,34 +270,33 @@ int prp_encrypt(prp_ctx     * restrict ctx,
 /*------------------------------------ The CTR Part -------------------------*/
     local_len = (pt_len - 2*16); //First two message block will be used later
     iters = local_len/npblks;
-    index = 2; //First two message block will be used later
-    ctr = ZERO();
+    index  = 2; //First two message block will be used later
+    index4 = 0;
+    ctr4 = CTR4321;
+    __m512i WW = _mm512_broadcast_i32x4(W);
+    __m512i ZZ = _mm512_broadcast_i32x4(Z);
+    __m512i ZC = XOR4(ZZ, ctr4);
     while (iters) {
-        ctr =  ADD_ONE(ctr); RT[0][0] = XOR(ctr, Z);
-        ctr =  ADD_ONE(ctr); RT[0][1] = XOR(ctr, Z);
-        ctr =  ADD_ONE(ctr); RT[0][2] = XOR(ctr, Z);
-        ctr =  ADD_ONE(ctr); RT[0][3] = XOR(ctr, Z);
-            
+        RT[0]  = ZC;
+        ctr4   =  ADD4444(ctr4);
+        ZC = XOR4(ZZ, ctr4);
+        
         for(i=1; i<8; i++){ //UPDATE_TWEAK 
-            RT[i][0] = PERMUTE(RT[i-1][0]);
-            RT[i][1] = PERMUTE(RT[i-1][1]);
-            RT[i][2] = PERMUTE(RT[i-1][2]);
-            RT[i][3] = PERMUTE(RT[i-1][3]);
+            RT[i] = PERMUTE_512(RT[i-1]);
         }
-        States[0] = States[1] = States[2] = States[3] = W;
-        DEOXYS( States, ctx->round_keys_c, RT )   
         
-        ctp[index    ] = XOR(States[0], ptp[index    ]);
-        ctp[index + 1] = XOR(States[1], ptp[index + 1]);
-        ctp[index + 2] = XOR(States[2], ptp[index + 2]);
-        ctp[index + 3] = XOR(States[3], ptp[index + 3]);
+        state = WW;
+        DEOXYS( state, round_keys_c, RT )   
+        ctp4[index4] = XOR4(state, ptp4[index4]);
         
-        index += BPI;
+        index  += BPI;
+        index4 += 1;
         --iters;
     }
+    ctr = _mm512_extracti32x4_epi32(ctr4, 0);
     remaining = local_len % npblks;
     while (remaining >= 16) {
-        ctr = ADD_ONE(ctr); T = XOR(ctr, Z);
+        T = XOR(ctr, Z); ctr = ADD_ONE(ctr); 
         S = W;
         TAES(S, ctx->round_keys_c, T, t);
         ctp[index] = XOR(S, ptp[index]);
@@ -301,27 +307,27 @@ int prp_encrypt(prp_ctx     * restrict ctx,
 /*----------------------- Process Plaintexts ----------------------------*/
     local_len = (pt_len - 2*16); //First two message block will be used later
     index = 2; //First two message block will be used later
+    index4 = 0;
     iters = local_len/npblks;
     ctr = XOR(CTR_SAVE, TWO); //Use Saved values from previous tweak process
+    ctr4 = _mm512_broadcast_i32x4(ctr);
+    ctr4 = ADD3210(ctr4);
     X = HT0;
     Y = HT1;
     while (iters) {
-        ctr =  ADD_ONE(ctr); RT[0][0] = ctr;
-        ctr =  ADD_ONE(ctr); RT[0][1] = ctr;
-        ctr =  ADD_ONE(ctr); RT[0][2] = ctr;
-        ctr =  ADD_ONE(ctr); RT[0][3] = ctr;
+        RT[0]  = ctr4;
+        ctr4   =  ADD4444(ctr4);
         
         for(i=1; i<8; i++){ //UPDATE_TWEAK 
-            RT[i][0] = PERMUTE(RT[i-1][0]);
-            RT[i][1] = PERMUTE(RT[i-1][1]);
-            RT[i][2] = PERMUTE(RT[i-1][2]);
-            RT[i][3] = PERMUTE(RT[i-1][3]);
-        }    
-        States[0] = ctp[index  ];
-        States[1] = ctp[index+1];
-        States[2] = ctp[index+2];
-        States[3] = ctp[index+3];
-        DEOXYS( States, ctx->round_keys_h, RT )   
+            RT[i] = PERMUTE_512(RT[i-1]);
+        }
+        state = ctp4[index4];
+        DEOXYS( state, round_keys_h, RT )   
+        
+        States[0] = _mm512_extracti32x4_epi32(state, 0);
+        States[1] = _mm512_extracti32x4_epi32(state, 1);
+        States[2] = _mm512_extracti32x4_epi32(state, 2);
+        States[3] = _mm512_extracti32x4_epi32(state, 3);
         
         X = XOR(X, States[0]);
         X = XOR(X, States[1]);
@@ -329,17 +335,14 @@ int prp_encrypt(prp_ctx     * restrict ctx,
         X = XOR(X, States[3]);
         Y = gf_2_128_double_four(Y, States);
         
-        /* Y = increment(Y);Y = XOR(Y, States[0]); */  
-        /* Y = increment(Y);Y = XOR(Y, States[1]); */  
-        /* Y = increment(Y);Y = XOR(Y, States[2]); */  
-        /* Y = increment(Y);Y = XOR(Y, States[3]); */  
-
-        index += BPI;
+        index  += BPI;
+        index4 += 1;
         --iters;
     }
+    ctr = _mm512_extracti32x4_epi32(ctr4, 0);
     remaining = local_len % npblks;
     while (remaining >= 16) {
-        ctr = ADD_ONE(ctr); T = ctr; S = ctp[index];
+        T = ctr; ctr = ADD_ONE(ctr); S = ctp[index];
         TAES(S, ctx->round_keys_h, T, t);
         X = XOR(X, S);
         Y = increment(Y);Y = XOR(Y, S);  
@@ -347,7 +350,7 @@ int prp_encrypt(prp_ctx     * restrict ctx,
         remaining -= 16;
     }
     if (remaining > 0) { //If the last block is not full
-        ctr = ADD_ONE(ctr); T = ctr; //DomainSep
+        T = ctr; ctr = ADD_ONE(ctr); 
         S = ZERO();
         memcpy(&S, ctp+index, remaining);
         TAES(S, ctx->round_keys_h, T, t);
@@ -355,7 +358,6 @@ int prp_encrypt(prp_ctx     * restrict ctx,
         Y = increment(Y);Y = XOR(Y, S);  
     }
     //Handel Length 
-    ctr = ADD_ONE(ctr);
     T = XOR(ctr, ONE);
     len1 = pt_len*8; 
     len2 = tk_len*8; 

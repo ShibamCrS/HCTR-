@@ -72,14 +72,6 @@ static inline BLOCK gf_2_128_double_four(BLOCK Y, BLOCK S[4]) {
     sum = XOR(sum, S[3]);
     return sum;
 }
-void printregm(const void *a, int nrof_byte){
-    int i;
-    unsigned char *f = (unsigned char *)a;
-    for(i=0; i < nrof_byte; i++){
-        printf("%02X",(unsigned char) f[nrof_byte - 1 -i]); //uint8_t c[4+8];
-    }
-    printf("\n");
-}
 
 int prp_encrypt(prp_ctx     * restrict ctx,
                const void *pt,
@@ -89,18 +81,31 @@ int prp_encrypt(prp_ctx     * restrict ctx,
                void       *ct,
                int        encrypt)
 {
-    unsigned i, j, k, remaining=0, iters, npblks, index, local_len;
+    unsigned i, j, k, remaining=0, iters, npblks, index, local_len, index4;
     BLOCK       * restrict ctp = (BLOCK *)ct;
     const BLOCK * restrict ptp = (BLOCK *)pt;
     const BLOCK * restrict tkp = (BLOCK *)tk;
+
+    const BLOCK4 * restrict ptp4 = (BLOCK4 *)(ptp + 2);
+          BLOCK4 * restrict ctp4 = (BLOCK4 *)(ctp + 2);
+
     BLOCK X, Y, Z, W, ctr;
     BLOCK T, t, S;
-    BLOCK ST[2];
-    npblks = 16*BPI;
-
-    BLOCK RT[8][BPI];
+    BLOCK ST[2], RT[8];
     BLOCK States[BPI];
+    npblks = 16*BPI;
+    
+    BLOCK4 RT4[8];
+    BLOCK4 state, ctr4;
 
+    
+    __m512i round_keys_h[DEOXYS_BC_128_256_NUM_ROUND_KEYS];
+    __m512i round_keys_c[DEOXYS_BC_128_256_NUM_ROUND_KEYS];
+    for(int i=0; i<=DEOXYS_BC_128_256_NUM_ROUNDS; i++){
+        round_keys_h[i] = _mm512_broadcast_i32x4(ctx->round_keys_h[i]);
+        round_keys_c[i] = _mm512_broadcast_i32x4(ctx->round_keys_c[i]);
+    }
+    
     //Setup Ll and Lr
     __m128i Ll = ZERO(); __m128i Lr = ZERO();
     T = ZERO();
@@ -116,29 +121,50 @@ int prp_encrypt(prp_ctx     * restrict ctx,
     iters = local_len/(npblks*2);
     X = ZERO();
     Y = ZERO();
-    while (iters) {
-        States[0] = XOR(Ll, tkp[index     ]); Ll = increment(Ll); 
-        States[1] = XOR(Ll, tkp[index +  2]); Ll = increment(Ll); 
-        States[2] = XOR(Ll, tkp[index +  4]); Ll = increment(Ll); 
-        States[3] = XOR(Ll, tkp[index +  6]); Ll = increment(Ll); 
+    BLOCK Ll_arr[4], Lr_arr[4];
+    BLOCK4 Ll4, Lr4;
 
-        RT[0][0]  = XOR(Lr, tkp[index +  1]); Lr = increment(Lr); 
-        RT[0][1]  = XOR(Lr, tkp[index +  3]); Lr = increment(Lr); 
-        RT[0][2]  = XOR(Lr, tkp[index +  5]); Lr = increment(Lr); 
-        RT[0][3]  = XOR(Lr, tkp[index +  7]); Lr = increment(Lr); 
+    while (iters) {
+        Ll_arr[0] = Ll;
+        Ll_arr[1] = increment(Ll_arr[0]);
+        Ll_arr[2] = increment(Ll_arr[1]);
+        Ll_arr[3] = increment(Ll_arr[2]);
+        Ll        = increment(Ll_arr[3]);
+
+        Lr_arr[0] = Lr;
+        Lr_arr[1] = increment(Lr_arr[0]);
+        Lr_arr[2] = increment(Lr_arr[1]);
+        Lr_arr[3] = increment(Lr_arr[2]);
+        Lr        = increment(Lr_arr[3]);
+
+        States[0] = tkp[index     ];  
+        States[1] = tkp[index +  2];  
+        States[2] = tkp[index +  4];  
+        States[3] = tkp[index +  6];  
         
-        RT[0][0] = TRUNC(RT[0][0],ONE);\
-        RT[0][1] = TRUNC(RT[0][1],ONE);\
-        RT[0][2] = TRUNC(RT[0][2],ONE);\
-        RT[0][3] = TRUNC(RT[0][3],ONE);
-        
+        RT[0]  = tkp[index +  1];
+        RT[1]  = tkp[index +  3];
+        RT[2]  = tkp[index +  5];
+        RT[3]  = tkp[index +  7];
+
+        Ll4 = *((BLOCK4 *)Ll_arr);
+        state = *((BLOCK4 *)States);
+        state = XOR4(state, Ll4);
+               
+        Lr4 = *((BLOCK4 *)Lr_arr);
+        RT4[0] = *((BLOCK4 *)RT);
+        RT4[0] = XOR4(RT4[0], Lr4);
+        RT4[0] = TRUNC4(RT4[0], ONE4);
+
         for(i=1; i<8; i++){ //UPDATE_TWEAK 
-            RT[i][0] = PERMUTE(RT[i-1][0]);
-            RT[i][1] = PERMUTE(RT[i-1][1]);
-            RT[i][2] = PERMUTE(RT[i-1][2]);
-            RT[i][3] = PERMUTE(RT[i-1][3]);
+            RT4[i] = PERMUTE_512(RT4[i-1]);
         }
-        DEOXYS( States, ctx->round_keys_h, RT )
+        DEOXYS( state, round_keys_h, RT4 )
+        
+        States[0] = _mm512_extracti32x4_epi32(state, 0);
+        States[1] = _mm512_extracti32x4_epi32(state, 1);
+        States[2] = _mm512_extracti32x4_epi32(state, 2);
+        States[3] = _mm512_extracti32x4_epi32(state, 3);
 
         XX[0] = XOR(States[0], tkp[index + 1]); \
         XX[1] = XOR(States[1], tkp[index + 3]); \
@@ -183,30 +209,46 @@ int prp_encrypt(prp_ctx     * restrict ctx,
     index = 2; //First two message block will be used later
     iters = local_len/(2*npblks);
     while (iters) {
-        States[0] = XOR(Ll, ptp[index     ]); Ll = increment(Ll); 
-        States[1] = XOR(Ll, ptp[index +  2]); Ll = increment(Ll); 
-        States[2] = XOR(Ll, ptp[index +  4]); Ll = increment(Ll); 
-        States[3] = XOR(Ll, ptp[index +  6]); Ll = increment(Ll); 
+        Ll_arr[0] = Ll;
+        Ll_arr[1] = increment(Ll_arr[0]);
+        Ll_arr[2] = increment(Ll_arr[1]);
+        Ll_arr[3] = increment(Ll_arr[2]);
+        Ll        = increment(Ll_arr[3]);
 
-        RT[0][0]  = XOR(Lr, ptp[index +  1]); Lr = increment(Lr); 
-        RT[0][1]  = XOR(Lr, ptp[index +  3]); Lr = increment(Lr); 
-        RT[0][2]  = XOR(Lr, ptp[index +  5]); Lr = increment(Lr); 
-        RT[0][3]  = XOR(Lr, ptp[index +  7]); Lr = increment(Lr); 
+        Lr_arr[0] = Lr;
+        Lr_arr[1] = increment(Lr_arr[0]);
+        Lr_arr[2] = increment(Lr_arr[1]);
+        Lr_arr[3] = increment(Lr_arr[2]);
+        Lr        = increment(Lr_arr[3]);
 
-        RT[0][0] = TRUNC(RT[0][0],ONE);\
-        RT[0][1] = TRUNC(RT[0][1],ONE);\
-        RT[0][2] = TRUNC(RT[0][2],ONE);\
-        RT[0][3] = TRUNC(RT[0][3],ONE);
-
-        for(i=1; i<8; i++){ //UPDATE_TWEAK 
-            RT[i][0] = PERMUTE(RT[i-1][0]);
-            RT[i][1] = PERMUTE(RT[i-1][1]);
-            RT[i][2] = PERMUTE(RT[i-1][2]);
-            RT[i][3] = PERMUTE(RT[i-1][3]);
-        }
-
-        DEOXYS( States, ctx->round_keys_h, RT )   
+        States[0] = ptp[index     ];  
+        States[1] = ptp[index +  2];  
+        States[2] = ptp[index +  4];  
+        States[3] = ptp[index +  6];  
         
+        RT[0]  = ptp[index +  1];
+        RT[1]  = ptp[index +  3];
+        RT[2]  = ptp[index +  5];
+        RT[3]  = ptp[index +  7];
+
+        Ll4 = *((BLOCK4 *)Ll_arr);
+        state = *((BLOCK4 *)States);
+        state = XOR4(state, Ll4);
+               
+        Lr4 = *((BLOCK4 *)Lr_arr);
+        RT4[0] = *((BLOCK4 *)RT);
+        RT4[0] = XOR4(RT4[0], Lr4);
+        RT4[0] = TRUNC4(RT4[0], ONE4);
+        for(i=1; i<8; i++){ //UPDATE_TWEAK 
+            RT4[i] = PERMUTE_512(RT4[i-1]);
+        }
+        DEOXYS( state, round_keys_h, RT4 )
+
+        States[0] = _mm512_extracti32x4_epi32(state, 0);
+        States[1] = _mm512_extracti32x4_epi32(state, 1);
+        States[2] = _mm512_extracti32x4_epi32(state, 2);
+        States[3] = _mm512_extracti32x4_epi32(state, 3);
+
         XX[0] = XOR(States[0], ptp[index + 1]); \
         XX[1] = XOR(States[1], ptp[index + 3]); \
         XX[2] = XOR(States[2], ptp[index + 5]); \
@@ -262,74 +304,71 @@ int prp_encrypt(prp_ctx     * restrict ctx,
     W = XOR(ptp[1], W);
     if(encrypt) {
 #ifdef PRINT
-    printf("U1: "); printregm(&Z, 16);
-    printf("U2: "); printregm(&W, 16);
+    printf("U1: "); printregz(&Z, 16);
+    printf("U2: "); printregz(&W, 16);
 #endif
     TAES(Z, ctx->round_keys_1, W, t);
     TAES(W, ctx->round_keys_2, Z, t);
 #ifdef PRINT
-    printf("Z : "); printregm(&Z, 16);
-    printf("W : "); printregm(&W, 16);
+    printf("Z : "); printregz(&Z, 16);
+    printf("W : "); printregz(&W, 16);
 #endif
     S = Z; T = W;
     TAES(S, ctx->round_keys_3, T, t);
     TAES(T, ctx->round_keys_4, S, t);
 #ifdef PRINT
-    printf("V1: "); printregm(&S, 16);
-    printf("V2: "); printregm(&T, 16);
+    printf("V1: "); printregz(&S, 16);
+    printf("V2: "); printregz(&T, 16);
 #endif
     }
     else {
 #ifdef PRINT
-    printf("V1: "); printregm(&Z, 16);
-    printf("V2: "); printregm(&W, 16);
+    printf("V1: "); printregz(&Z, 16);
+    printf("V2: "); printregz(&W, 16);
 #endif
     TAESD(W, ctx->round_keys_d_4, Z, t);
     TAESD(Z, ctx->round_keys_d_3, W, t);
 #ifdef PRINT
-    printf("Z : "); printregm(&Z, 16);
-    printf("W : "); printregm(&W, 16);
+    printf("Z : "); printregz(&Z, 16);
+    printf("W : "); printregz(&W, 16);
 #endif
     S = Z; T = W;
     TAESD(T, ctx->round_keys_d_2, S, t);
     TAESD(S, ctx->round_keys_d_1, T, t);
 #ifdef PRINT
-    printf("U1: "); printregm(&S, 16);
-    printf("U2: "); printregm(&T, 16);
+    printf("U1: "); printregz(&S, 16);
+    printf("U2: "); printregz(&T, 16);
 #endif
     }
     ctp[0] = S; ctp[1] = T;
 /*------------------------------------ The CTR Part -------------------------*/
     local_len = (pt_len - 2*16); //First two message block will be used later
     iters = local_len/npblks;
-    index = 2; //First two message block will be used later
-    ctr = ZERO();
+    index  = 2; //First two message block will be used later
+    index4 = 0;
+    ctr4 = CTR4321;
+    __m512i WW = _mm512_broadcast_i32x4(W);
+    __m512i ZZ = _mm512_broadcast_i32x4(Z);
+    __m512i ZC = XOR4(ZZ, ctr4);
     while (iters) {
-        ctr =  ADD_ONE(ctr); RT[0][0] = XOR(ctr, Z);
-        ctr =  ADD_ONE(ctr); RT[0][1] = XOR(ctr, Z);
-        ctr =  ADD_ONE(ctr); RT[0][2] = XOR(ctr, Z);
-        ctr =  ADD_ONE(ctr); RT[0][3] = XOR(ctr, Z);
-            
-        for(i=1; i<8; i++){ //UPDATE_TWEAK
-            RT[i][0] = PERMUTE(RT[i-1][0]);
-            RT[i][1] = PERMUTE(RT[i-1][1]);
-            RT[i][2] = PERMUTE(RT[i-1][2]);
-            RT[i][3] = PERMUTE(RT[i-1][3]);
+        RT4[0]  = ZC;
+        ctr4   =  ADD4444(ctr4);
+        ZC = XOR4(ZZ, ctr4);
+        for(i=1; i<8; i++){ //UPDATE_TWEAK 
+            RT4[i] = PERMUTE_512(RT4[i-1]);
         }
-        States[0] = States[1] = States[2] = States[3] = W;
-        DEOXYS( States, ctx->round_keys_c, RT )   
-        
-        ctp[index    ] = XOR(States[0], ptp[index    ]);\
-        ctp[index + 1] = XOR(States[1], ptp[index + 1]);\
-        ctp[index + 2] = XOR(States[2], ptp[index + 2]);\
-        ctp[index + 3] = XOR(States[3], ptp[index + 3]);
-        
-        index += 4;
+        state = WW;
+        DEOXYS( state, round_keys_c, RT4 )
+        ctp4[index4] = XOR4(state, ptp4[index4]);
+
+        index  += BPI;
+        index4 += 1;
         --iters;
     }
+    ctr = _mm512_extracti32x4_epi32(ctr4, 0);
     remaining = local_len % npblks;
     while (remaining >= 16) {
-        ctr = ADD_ONE(ctr); T = XOR(ctr, Z);
+        T = XOR(ctr, Z); ctr = ADD_ONE(ctr);
         S = W;
         TAES(S, ctx->round_keys_c, T, t);
         ctp[index] = XOR(S, ptp[index]);
@@ -346,29 +385,45 @@ int prp_encrypt(prp_ctx     * restrict ctx,
     Ll = Ll_SAVE;
     Lr = Lr_SAVE;
     while (iters) {
-        States[0] = XOR(Ll, ctp[index     ]); Ll = increment(Ll); 
-        States[1] = XOR(Ll, ctp[index +  2]); Ll = increment(Ll); 
-        States[2] = XOR(Ll, ctp[index +  4]); Ll = increment(Ll); 
-        States[3] = XOR(Ll, ctp[index +  6]); Ll = increment(Ll); 
+        Ll_arr[0] = Ll;
+        Ll_arr[1] = increment(Ll_arr[0]);
+        Ll_arr[2] = increment(Ll_arr[1]);
+        Ll_arr[3] = increment(Ll_arr[2]);
+        Ll        = increment(Ll_arr[3]);
 
-        RT[0][0]  = XOR(Lr, ctp[index +  1]); Lr = increment(Lr); 
-        RT[0][1]  = XOR(Lr, ctp[index +  3]); Lr = increment(Lr); 
-        RT[0][2]  = XOR(Lr, ctp[index +  5]); Lr = increment(Lr); 
-        RT[0][3]  = XOR(Lr, ctp[index +  7]); Lr = increment(Lr); 
+        Lr_arr[0] = Lr;
+        Lr_arr[1] = increment(Lr_arr[0]);
+        Lr_arr[2] = increment(Lr_arr[1]);
+        Lr_arr[3] = increment(Lr_arr[2]);
+        Lr        = increment(Lr_arr[3]);
 
-        RT[0][0] = TRUNC(RT[0][0],ONE);\
-        RT[0][1] = TRUNC(RT[0][1],ONE);\
-        RT[0][2] = TRUNC(RT[0][2],ONE);\
-        RT[0][3] = TRUNC(RT[0][3],ONE);
+        States[0] = ctp[index     ];  
+        States[1] = ctp[index +  2];  
+        States[2] = ctp[index +  4];  
+        States[3] = ctp[index +  6];  
         
-        for(i=1; i<8; i++){ //UPDATE_TWEAK 
-            RT[i][0] = PERMUTE(RT[i-1][0]);
-            RT[i][1] = PERMUTE(RT[i-1][1]);
-            RT[i][2] = PERMUTE(RT[i-1][2]);
-            RT[i][3] = PERMUTE(RT[i-1][3]);
-        }
+        RT[0]  = ctp[index +  1];
+        RT[1]  = ctp[index +  3];
+        RT[2]  = ctp[index +  5];
+        RT[3]  = ctp[index +  7];
 
-        DEOXYS( States, ctx->round_keys_h, RT )   
+        Ll4 = *((BLOCK4 *)Ll_arr);
+        state = *((BLOCK4 *)States);
+        state = XOR4(state, Ll4);
+               
+        Lr4 = *((BLOCK4 *)Lr_arr);
+        RT4[0] = *((BLOCK4 *)RT);
+        RT4[0] = XOR4(RT4[0], Lr4);
+        RT4[0] = TRUNC4(RT4[0], ONE4);
+        for(i=1; i<8; i++){ //UPDATE_TWEAK 
+            RT4[i] = PERMUTE_512(RT4[i-1]);
+        }
+        DEOXYS( state, round_keys_h, RT4 )
+
+        States[0] = _mm512_extracti32x4_epi32(state, 0);
+        States[1] = _mm512_extracti32x4_epi32(state, 1);
+        States[2] = _mm512_extracti32x4_epi32(state, 2);
+        States[3] = _mm512_extracti32x4_epi32(state, 3);
 
         XX[0] = XOR(States[0], ctp[index + 1]); \
         XX[1] = XOR(States[1], ctp[index + 3]); \
