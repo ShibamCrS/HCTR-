@@ -29,42 +29,44 @@ static inline BLOCK increment(BLOCK b) {
     b = _mm_slli_epi32(b, 1);
     return _mm_xor_si128(b,t);
 }
-#define REDUCTION_POLYNOMIAL  _mm_set_epi32(0, 0, 0, 135)
-#define accumulate_four(x, y) { \
+#define accumulate_four_stateful(x, y) { \
     x[0] = XOR(x[0], x[1]); \
     x[2] = XOR(x[2], x[3]); \
+    x[3] = XOR(x[0], x[2]); \
+    y    = XOR(y, x[3]); \
+}
+
+#define REDUCTION_POLYNOMIAL  _mm_set_epi32(0, 0, 0, 135)
+#define accumulate_five(x, y) { \
+    x[0] = XOR(x[0], x[1]); \
+    x[2] = XOR(x[2], x[3]); \
+    x[0] = XOR(x[0], x[4]); \
     y    = XOR(x[0], x[2]); \
 }
-static inline BLOCK gf_2_128_double_four(BLOCK Y, BLOCK S[4]) {
-    BLOCK tmp[4];
-    tmp[0] = _mm_srli_epi64(Y   , 60);
-    tmp[1] = _mm_srli_epi64(S[0], 61);
-    tmp[2] = _mm_srli_epi64(S[1], 62);
-    tmp[3] = _mm_srli_epi64(S[2], 63);
+__m128i gf_2_128_double_five(__m128i X, const __m128i S[4]) {
+    __m128i tmp[5];
+    tmp[0] = _mm_srli_epi64(X   , 60);
+    tmp[1] = _mm_srli_epi64(S[0], 60);
+    tmp[2] = _mm_srli_epi64(S[1], 61);
+    tmp[3] = _mm_srli_epi64(S[2], 62);
+    tmp[4] = _mm_srli_epi64(S[3], 63);
 
-    BLOCK sum;
-    accumulate_four(tmp, sum);
-
-    // ---------------------------------------------------------------------
-    // sum = sum_high || sum_low
-    // We have to take sum_high * 135 and XOR it to our XOR sum to have the
-    // Reduction term. The 0x01 indicates that sum_high is used.
-    // ---------------------------------------------------------------------
-
-    BLOCK mod =  _mm_clmulepi64_si128(sum, REDUCTION_POLYNOMIAL, 0x01);
+    __m128i sum;
+    accumulate_five(tmp, sum);
+    __m128i mod =  _mm_clmulepi64_si128(sum, REDUCTION_POLYNOMIAL, 0x01);
 
     // Move sum_low to the upper 64-bit half
-    BLOCK sum_low = _mm_bslli_si128(sum, 8);
+    __m128i sum_low = _mm_bslli_si128(sum, 8);
 
-    tmp[0] = _mm_slli_epi64(Y,    4);
-    tmp[1] = _mm_slli_epi64(S[0], 3);
-    tmp[2] = _mm_slli_epi64(S[1], 2);
-    tmp[3] = _mm_slli_epi64(S[2], 1);
+    tmp[0] = _mm_slli_epi64(X,    4);
+    tmp[1] = _mm_slli_epi64(S[0], 4);
+    tmp[2] = _mm_slli_epi64(S[1], 3);
+    tmp[3] = _mm_slli_epi64(S[2], 2);
+    tmp[4] = _mm_slli_epi64(S[3], 1);
 
-    accumulate_four(tmp, sum);
+    accumulate_five(tmp, sum);
     sum = XOR(sum, sum_low);
     sum = XOR(sum, mod);
-    sum = XOR(sum, S[3]);
     return sum;
 }
 
@@ -83,6 +85,10 @@ int prp_encrypt(prp_ctx     * restrict ctx,
     BLOCK X, Y, Z, W, ctr;
     BLOCK T, t, S;
     npblks = 16*BPI;
+
+    uint64_t len1 = pt_len*8;
+    uint64_t len2 = tk_len*8;
+    BLOCK LEN = _mm_set_epi64x(len1, len2);
 
     BLOCK RT[8][BPI];
     BLOCK States[BPI];
@@ -114,11 +120,17 @@ int prp_encrypt(prp_ctx     * restrict ctx,
         States[3] = tkp[index+3];
         DEOXYS( States, ctx->round_keys_h, RT )   
         
-        X = XOR(X, States[0]);
-        X = XOR(X, States[1]);
-        X = XOR(X, States[2]);
-        X = XOR(X, States[3]);
-        Y = gf_2_128_double_four(Y, States);
+        /*
+            We need to compute:
+            Y_new = 2(2(2(2(Y + States[0]) + States[1]) + States[2]) + States[3])
+            = 2^4Y + 2^4States[0] + 2^3States[1] + 2^2States[2] + 2States[3]
+        */
+        Y = gf_2_128_double_five(Y, States);
+        /*
+            We need to compute:
+            X_new = X + States[0] + States[1] + States[2] + States[3]
+        */
+        accumulate_four_stateful(States, X);
 
         index += BPI;
         --iters;
@@ -129,7 +141,7 @@ int prp_encrypt(prp_ctx     * restrict ctx,
         ctr = ADD_ONE(ctr); T = ctr; S = tkp[index];
         TAES(S, ctx->round_keys_h, T, t);
         X = XOR(X, S);
-        Y = increment(Y); Y = XOR(Y, S); 
+        Y = XOR(Y, S); Y = increment(Y);  
         index += 1;
         remaining -= 16;
     }
@@ -139,7 +151,7 @@ int prp_encrypt(prp_ctx     * restrict ctx,
         memcpy(&S, tkp+index, remaining); //With 0* padding
         TAES(S, ctx->round_keys_h, T, t);
         X = XOR(X, S);
-        Y = increment(Y); Y = XOR(Y, S); 
+        Y = XOR(Y, S); Y = increment(Y);  
     } 
     
     BLOCK HT0 = X;
@@ -168,16 +180,17 @@ int prp_encrypt(prp_ctx     * restrict ctx,
         States[3] = ptp[index+3];
         DEOXYS( States, ctx->round_keys_h, RT )   
         
-        X = XOR(X, States[0]);
-        X = XOR(X, States[1]);
-        X = XOR(X, States[2]);
-        X = XOR(X, States[3]);
-
-        Y = gf_2_128_double_four(Y, States);
-        /* Y = increment(Y);Y = XOR(Y, States[0]); */  
-        /* Y = increment(Y);Y = XOR(Y, States[1]); */  
-        /* Y = increment(Y);Y = XOR(Y, States[2]); */  
-        /* Y = increment(Y);Y = XOR(Y, States[3]); */  
+        /*
+            We need to compute:
+            Y_new = 2(2(2(2(Y_old + States[0]) + States[1]) + States[2]) + States[3])
+            = 2^4X_old + 2^4States[0] + 2^3States[1] + 2^2States[2] + 2States[3]
+        */
+        Y = gf_2_128_double_five(Y, States);
+        /*
+            We need to compute:
+            X_new = X_old + States[0] + States[1] + States[2] + States[3]
+        */
+        accumulate_four_stateful(States, X);
 
         index += BPI;
         --iters;
@@ -190,7 +203,7 @@ int prp_encrypt(prp_ctx     * restrict ctx,
         S = ptp[index];
         TAES(S, ctx->round_keys_h, T, t);
         X = XOR(X, S);
-        Y = increment(Y); Y = XOR(Y, S); 
+        Y = XOR(Y, S); Y = increment(Y);  
         index += 1;
         remaining -= 16;
     }
@@ -200,19 +213,16 @@ int prp_encrypt(prp_ctx     * restrict ctx,
         memcpy(&S, ptp+index, remaining);
         TAES(S, ctx->round_keys_h, T, t);
         X = XOR(X, S);
-        Y = increment(Y);Y = XOR(Y, S);  
+        Y = XOR(Y, S); Y = increment(Y);  
     }
     ctr = ADD_ONE(ctr);
     T = XOR(ctr, ONE);
     
     //Handel Length 
-    uint64_t len1 = pt_len*8; 
-    uint64_t len2 = tk_len*8; 
-    S = _mm_set_epi64x(len1, len2);
+    S = LEN;
     TAES(S, ctx->round_keys_h, T, t);
     X = XOR(X, S);
-    Y = increment(Y);Y = XOR(Y, S);  
-    Y = increment(Y);
+    Y = XOR(Y, S); Y = increment(Y); 
     //FInalization Of Hash
     Z = X; W = Y;
     Y = TRUNC(Y, TWO); X = TRUNC(X, THREE);
@@ -323,16 +333,17 @@ int prp_encrypt(prp_ctx     * restrict ctx,
         States[3] = ctp[index+3];
         DEOXYS( States, ctx->round_keys_h, RT )   
         
-        X = XOR(X, States[0]);
-        X = XOR(X, States[1]);
-        X = XOR(X, States[2]);
-        X = XOR(X, States[3]);
-        Y = gf_2_128_double_four(Y, States);
-        
-        /* Y = increment(Y);Y = XOR(Y, States[0]); */  
-        /* Y = increment(Y);Y = XOR(Y, States[1]); */  
-        /* Y = increment(Y);Y = XOR(Y, States[2]); */  
-        /* Y = increment(Y);Y = XOR(Y, States[3]); */  
+        /*
+            We need to compute:
+            Y_new = 2(2(2(2(Y_old + States[0]) + States[1]) + States[2]) + States[3])
+            = 2^4X_old + 2^4States[0] + 2^3States[1] + 2^2States[2] + 2States[3]
+        */
+        Y = gf_2_128_double_five(Y, States);
+        /*
+            We need to compute:
+            X_new = X_old + States[0] + States[1] + States[2] + States[3]
+        */
+        accumulate_four_stateful(States, X);
 
         index += BPI;
         --iters;
@@ -342,7 +353,7 @@ int prp_encrypt(prp_ctx     * restrict ctx,
         ctr = ADD_ONE(ctr); T = ctr; S = ctp[index];
         TAES(S, ctx->round_keys_h, T, t);
         X = XOR(X, S);
-        Y = increment(Y);Y = XOR(Y, S);  
+        Y = XOR(Y, S); Y = increment(Y);  
         index += 1;
         remaining -= 16;
     }
@@ -352,19 +363,15 @@ int prp_encrypt(prp_ctx     * restrict ctx,
         memcpy(&S, ctp+index, remaining);
         TAES(S, ctx->round_keys_h, T, t);
         X = XOR(X, S);
-        Y = increment(Y);Y = XOR(Y, S);  
+        Y = XOR(Y, S); Y = increment(Y);  
     }
     //Handel Length 
     ctr = ADD_ONE(ctr);
     T = XOR(ctr, ONE);
-    len1 = pt_len*8; 
-    len2 = tk_len*8; 
-    S = _mm_set_epi64x(len1, len2);
-    
+    S = LEN;
     TAES(S, ctx->round_keys_h, T, t);
     X = XOR(X, S);
-    Y = increment(Y);Y = XOR(Y, S);  
-    Y = increment(Y);
+    Y = XOR(Y, S); Y = increment(Y); 
 /*----------------- Process First Two Blocks ----------------------*/
     //FInalization Of Hash
     Z = X; W = Y;

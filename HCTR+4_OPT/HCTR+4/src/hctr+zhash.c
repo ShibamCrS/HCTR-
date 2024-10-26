@@ -20,7 +20,7 @@ void printregz(const void *a, int nrof_byte){
     printf("\n");
 }
 
-static inline BLOCK increment(BLOCK b) {
+static inline BLOCK Double(BLOCK b) {
     const __m128i mask = _mm_set_epi32(135,1,1,1);
     __m128i t = _mm_srai_epi32(b, 31);
     t = _mm_and_si128(t, mask);
@@ -28,50 +28,47 @@ static inline BLOCK increment(BLOCK b) {
     b = _mm_slli_epi32(b, 1);
     return _mm_xor_si128(b,t);
 }
-#define REDUCTION_POLYNOMIAL  _mm_set_epi32(0, 0, 0, 135)
-#define accumulate_four(x, y) { \
-    x[0] = XOR(x[0], x[1]); \
-    x[2] = XOR(x[2], x[3]); \
-    y    = XOR(x[0], x[2]); \
-}
 #define accumulate_four_stateful(x, y) { \
     x[0] = XOR(x[0], x[1]); \
     x[2] = XOR(x[2], x[3]); \
     x[3] = XOR(x[0], x[2]); \
     y    = XOR(y, x[3]); \
 }
-static inline BLOCK gf_2_128_double_four(BLOCK Y, BLOCK S[4]) {
-    BLOCK tmp[4];
-    tmp[0] = _mm_srli_epi64(Y   , 60);
-    tmp[1] = _mm_srli_epi64(S[0], 61);
-    tmp[2] = _mm_srli_epi64(S[1], 62);
-    tmp[3] = _mm_srli_epi64(S[2], 63);
 
-    BLOCK sum;
-    accumulate_four(tmp, sum);
+#define REDUCTION_POLYNOMIAL  _mm_set_epi32(0, 0, 0, 135)
+#define accumulate_five(x, y) { \
+    x[0] = XOR(x[0], x[1]); \
+    x[2] = XOR(x[2], x[3]); \
+    x[0] = XOR(x[0], x[4]); \
+    y    = XOR(x[0], x[2]); \
+}
+__m128i gf_2_128_double_five(__m128i X, const __m128i S[4]) {
+    __m128i tmp[5];
+    tmp[0] = _mm_srli_epi64(X   , 60);
+    tmp[1] = _mm_srli_epi64(S[0], 60);
+    tmp[2] = _mm_srli_epi64(S[1], 61);
+    tmp[3] = _mm_srli_epi64(S[2], 62);
+    tmp[4] = _mm_srli_epi64(S[3], 63);
 
-    // ---------------------------------------------------------------------
-    // sum = sum_high || sum_low
-    // We have to take sum_high * 135 and XOR it to our XOR sum to have the
-    // Reduction term. The 0x01 indicates that sum_high is used.
-    // ---------------------------------------------------------------------
-
-    BLOCK mod =  _mm_clmulepi64_si128(sum, REDUCTION_POLYNOMIAL, 0x01);
+    __m128i sum;
+    accumulate_five(tmp, sum);
+    __m128i mod =  _mm_clmulepi64_si128(sum, REDUCTION_POLYNOMIAL, 0x01);
 
     // Move sum_low to the upper 64-bit half
-    BLOCK sum_low = _mm_bslli_si128(sum, 8);
+    __m128i sum_low = _mm_bslli_si128(sum, 8);
 
-    tmp[0] = _mm_slli_epi64(Y,    4);
-    tmp[1] = _mm_slli_epi64(S[0], 3);
-    tmp[2] = _mm_slli_epi64(S[1], 2);
-    tmp[3] = _mm_slli_epi64(S[2], 1);
+    tmp[0] = _mm_slli_epi64(X,    4);
+    tmp[1] = _mm_slli_epi64(S[0], 4);
+    tmp[2] = _mm_slli_epi64(S[1], 3);
+    tmp[3] = _mm_slli_epi64(S[2], 2);
+    tmp[4] = _mm_slli_epi64(S[3], 1);
 
-    accumulate_four(tmp, sum);
+    accumulate_five(tmp, sum);
     sum = XOR(sum, sum_low);
     sum = XOR(sum, mod);
-    sum = XOR(sum, S[3]);
     return sum;
 }
+
 void printregm(const void *a, int nrof_byte){
     int i;
     unsigned char *f = (unsigned char *)a;
@@ -121,15 +118,15 @@ int prp_encrypt(prp_ctx     * restrict ctx,
     X = ZERO();
     Y = ZERO();
     while (iters) {
-        SL[0] = XOR(Ll, tkp[index     ]); Ll = increment(Ll); 
-        SL[1] = XOR(Ll, tkp[index +  2]); Ll = increment(Ll); 
-        SL[2] = XOR(Ll, tkp[index +  4]); Ll = increment(Ll); 
-        SL[3] = XOR(Ll, tkp[index +  6]); Ll = increment(Ll); 
+        SL[0] = XOR(Ll, tkp[index     ]); Ll = Double(Ll); 
+        SL[1] = XOR(Ll, tkp[index +  2]); Ll = Double(Ll); 
+        SL[2] = XOR(Ll, tkp[index +  4]); Ll = Double(Ll); 
+        SL[3] = XOR(Ll, tkp[index +  6]); Ll = Double(Ll); 
 
-        SR[0][0]  = XOR(Lr, tkp[index +  1]); Lr = increment(Lr); 
-        SR[0][1]  = XOR(Lr, tkp[index +  3]); Lr = increment(Lr); 
-        SR[0][2]  = XOR(Lr, tkp[index +  5]); Lr = increment(Lr); 
-        SR[0][3]  = XOR(Lr, tkp[index +  7]); Lr = increment(Lr); 
+        SR[0][0]  = XOR(Lr, tkp[index +  1]); Lr = Double(Lr); 
+        SR[0][1]  = XOR(Lr, tkp[index +  3]); Lr = Double(Lr); 
+        SR[0][2]  = XOR(Lr, tkp[index +  5]); Lr = Double(Lr); 
+        SR[0][3]  = XOR(Lr, tkp[index +  7]); Lr = Double(Lr); 
         
         SR[0][0] = TRUNC(SR[0][0],ONE);\
         SR[0][1] = TRUNC(SR[0][1],ONE);\
@@ -144,26 +141,35 @@ int prp_encrypt(prp_ctx     * restrict ctx,
         }
         DEOXYS( SL, ctx->round_keys_h, SR )  //CL == SL
 
-        CR[0] = XOR(SL[0], tkp[index + 1]); \
-        CR[1] = XOR(SL[1], tkp[index + 3]); \
-        CR[2] = XOR(SL[2], tkp[index + 5]); \
-        CR[3] = XOR(SL[3], tkp[index + 7]);
-        accumulate_four_stateful(CR, Y);
-
-        SL[0] = XOR(X, SL[0]);
-        X = gf_2_128_double_four(X, SL);
+        /*
+            We need to compute:
+            X_new = 2(2(2(2(X_old + SL[0]) + SL[1]) + SL[2]) + SL[3])
+            = 2^4X_old + 2^4SL[0] + 2^3SL[1] + 2^2SL[2] + 2SL[3]
+        */
+        X = gf_2_128_double_five(X, SL);
         
+        SL[0] = XOR(SL[0], tkp[index + 1]); \
+        SL[1] = XOR(SL[1], tkp[index + 3]); \
+        SL[2] = XOR(SL[2], tkp[index + 5]); \
+        SL[3] = XOR(SL[3], tkp[index + 7]);
+        /*
+            We need to compute:
+            Y_new = Y_old + CR[0] + CR[1] + CR[2] + CR[3]
+        */
+        accumulate_four_stateful(SL, Y);
+        
+                
         index += 8;
         --iters;
     }
 
     remaining = local_len % (npblks*2);
     while (remaining >= 32) {
-        S = XOR(Ll, tkp[index]);      Ll = increment(Ll); 
-        T = XOR(Lr, tkp[index +  1]); Lr = increment(Lr); 
+        S = XOR(Ll, tkp[index]);      Ll = Double(Ll); 
+        T = XOR(Lr, tkp[index +  1]); Lr = Double(Lr); 
         TAES(S, ctx->round_keys_h, T, t);
         Y = XOR(Y, XOR(S, tkp[index+1]));
-        X = XOR(X, S); X = increment(X); 
+        X = XOR(X, S); X = Double(X); 
         index += 2;
         remaining -= 32;
     }
@@ -171,13 +177,13 @@ int prp_encrypt(prp_ctx     * restrict ctx,
         ST[0] = ZERO();
         ST[1] = ZERO();
         memcpy(ST, tkp+index, remaining);
-        S = XOR(Ll, ST[0]); Ll = increment(Ll); 
-        T = XOR(Lr, ST[1]); Lr = increment(Lr);
+        S = XOR(Ll, ST[0]); Ll = Double(Ll); 
+        T = XOR(Lr, ST[1]); Lr = Double(Lr);
         T = XOR(T, ONE); //DomainSep
         TAES(S, ctx->round_keys_h, T, t);
 
         Y = XOR(Y,  XOR(S, ST[1]));
-        X = XOR(X, S); X = increment(X); 
+        X = XOR(X, S); X = Double(X); 
     }
     BLOCK HT0 = X;
     BLOCK HT1 = Y;
@@ -188,15 +194,15 @@ int prp_encrypt(prp_ctx     * restrict ctx,
     index = 2; //First two message block will be used later
     iters = local_len/(2*npblks);
     while (iters) {
-        SL[0] = XOR(Ll, ptp[index     ]); Ll = increment(Ll); 
-        SL[1] = XOR(Ll, ptp[index +  2]); Ll = increment(Ll); 
-        SL[2] = XOR(Ll, ptp[index +  4]); Ll = increment(Ll); 
-        SL[3] = XOR(Ll, ptp[index +  6]); Ll = increment(Ll); 
+        SL[0] = XOR(Ll, ptp[index     ]); Ll = Double(Ll); 
+        SL[1] = XOR(Ll, ptp[index +  2]); Ll = Double(Ll); 
+        SL[2] = XOR(Ll, ptp[index +  4]); Ll = Double(Ll); 
+        SL[3] = XOR(Ll, ptp[index +  6]); Ll = Double(Ll); 
 
-        SR[0][0]  = XOR(Lr, ptp[index +  1]); Lr = increment(Lr); 
-        SR[0][1]  = XOR(Lr, ptp[index +  3]); Lr = increment(Lr); 
-        SR[0][2]  = XOR(Lr, ptp[index +  5]); Lr = increment(Lr); 
-        SR[0][3]  = XOR(Lr, ptp[index +  7]); Lr = increment(Lr); 
+        SR[0][0]  = XOR(Lr, ptp[index +  1]); Lr = Double(Lr); 
+        SR[0][1]  = XOR(Lr, ptp[index +  3]); Lr = Double(Lr); 
+        SR[0][2]  = XOR(Lr, ptp[index +  5]); Lr = Double(Lr); 
+        SR[0][3]  = XOR(Lr, ptp[index +  7]); Lr = Double(Lr); 
 
         SR[0][0] = TRUNC(SR[0][0],ONE);\
         SR[0][1] = TRUNC(SR[0][1],ONE);\
@@ -211,14 +217,22 @@ int prp_encrypt(prp_ctx     * restrict ctx,
         }
         DEOXYS( SL, ctx->round_keys_h, SR )  //CL == SL
         
-        CR[0] = XOR(SL[0], ptp[index + 1]); \
-        CR[1] = XOR(SL[1], ptp[index + 3]); \
-        CR[2] = XOR(SL[2], ptp[index + 5]); \
-        CR[3] = XOR(SL[3], ptp[index + 7]);
-        accumulate_four_stateful(CR, Y);
-
-        SL[0] = XOR(X, SL[0]);
-        X = gf_2_128_double_four(X, SL);
+        /*
+            We need to compute:
+            X_new = 2(2(2(2(X_old + SL[0]) + SL[1]) + SL[2]) + SL[3])
+            = 2^4X_old + 2^4SL[0] + 2^3SL[1] + 2^2SL[2] + 2SL[3]
+        */
+        X = gf_2_128_double_five(X, SL);
+        
+        SL[0] = XOR(SL[0], tkp[index + 1]); \
+        SL[1] = XOR(SL[1], tkp[index + 3]); \
+        SL[2] = XOR(SL[2], tkp[index + 5]); \
+        SL[3] = XOR(SL[3], tkp[index + 7]);
+        /*
+            We need to compute:
+            Y_new = Y_old + CR[0] + CR[1] + CR[2] + CR[3]
+        */
+        accumulate_four_stateful(SL, Y);
 
         index += 8;
         --iters;
@@ -226,12 +240,12 @@ int prp_encrypt(prp_ctx     * restrict ctx,
 
     remaining = local_len % (npblks*2);
     while (remaining >= 32) {
-        S = XOR(Ll, ptp[index]);      Ll = increment(Ll); 
-        T = XOR(Lr, ptp[index +  1]); Lr = increment(Lr); 
+        S = XOR(Ll, ptp[index]);      Ll = Double(Ll); 
+        T = XOR(Lr, ptp[index +  1]); Lr = Double(Lr); 
         T = XOR(TWO, T);
         TAES(S, ctx->round_keys_h, T, t);
         Y = XOR(Y, XOR(S, ptp[index+1]));
-        X = XOR(X, S); X = increment(X); 
+        X = XOR(X, S); X = Double(X); 
         index += 2;
         remaining -= 32;
     }
@@ -239,19 +253,19 @@ int prp_encrypt(prp_ctx     * restrict ctx,
         ST[0] = ZERO();
         ST[1] = ZERO();
         memcpy(ST, ptp+index, remaining);
-        S = XOR(Ll, ST[0]); Ll = increment(Ll); 
-        T = XOR(Lr, ST[1]); Lr = increment(Lr);
+        S = XOR(Ll, ST[0]); Ll = Double(Ll); 
+        T = XOR(Lr, ST[1]); Lr = Double(Lr);
         T = XOR(T, THREE); //DomainSep
         TAES(S, ctx->round_keys_h, T, t);
         
         Y = XOR(Y,  XOR(S, ST[1]));
-        X = XOR(X, S); X = increment(X); 
+        X = XOR(X, S); X = Double(X); 
     }
     //Handel Length 
     S = XOR(Ll, LEN);
     TAES(S, ctx->round_keys_h, Lr, t);
     Y = XOR(Y, S);
-    X = increment(X);
+    X = Double(X);
     //FInalization Of Hash
     Z = X; W = Y;
     Y = TRUNC(Y, TWO); X = TRUNC(X, THREE);
@@ -347,15 +361,15 @@ int prp_encrypt(prp_ctx     * restrict ctx,
     Ll = Ll_SAVE;
     Lr = Lr_SAVE;
     while (iters) {
-        SL[0] = XOR(Ll, ctp[index     ]); Ll = increment(Ll); 
-        SL[1] = XOR(Ll, ctp[index +  2]); Ll = increment(Ll); 
-        SL[2] = XOR(Ll, ctp[index +  4]); Ll = increment(Ll); 
-        SL[3] = XOR(Ll, ctp[index +  6]); Ll = increment(Ll); 
+        SL[0] = XOR(Ll, ctp[index     ]); Ll = Double(Ll); 
+        SL[1] = XOR(Ll, ctp[index +  2]); Ll = Double(Ll); 
+        SL[2] = XOR(Ll, ctp[index +  4]); Ll = Double(Ll); 
+        SL[3] = XOR(Ll, ctp[index +  6]); Ll = Double(Ll); 
 
-        SR[0][0]  = XOR(Lr, ctp[index +  1]); Lr = increment(Lr); 
-        SR[0][1]  = XOR(Lr, ctp[index +  3]); Lr = increment(Lr); 
-        SR[0][2]  = XOR(Lr, ctp[index +  5]); Lr = increment(Lr); 
-        SR[0][3]  = XOR(Lr, ctp[index +  7]); Lr = increment(Lr); 
+        SR[0][0]  = XOR(Lr, ctp[index +  1]); Lr = Double(Lr); 
+        SR[0][1]  = XOR(Lr, ctp[index +  3]); Lr = Double(Lr); 
+        SR[0][2]  = XOR(Lr, ctp[index +  5]); Lr = Double(Lr); 
+        SR[0][3]  = XOR(Lr, ctp[index +  7]); Lr = Double(Lr); 
 
         SR[0][0] = TRUNC(SR[0][0],ONE);\
         SR[0][1] = TRUNC(SR[0][1],ONE);\
@@ -370,14 +384,22 @@ int prp_encrypt(prp_ctx     * restrict ctx,
         }
         DEOXYS( SL, ctx->round_keys_h, SR )  //CL == SL
         
-        CR[0] = XOR(SL[0], ctp[index + 1]); \
-        CR[1] = XOR(SL[1], ctp[index + 3]); \
-        CR[2] = XOR(SL[2], ctp[index + 5]); \
-        CR[3] = XOR(SL[3], ctp[index + 7]);
-        accumulate_four_stateful(CR, Y);
-
-        SL[0] = XOR(X, SL[0]);
-        X = gf_2_128_double_four(X, SL);
+        /*
+            We need to compute:
+            X_new = 2(2(2(2(X_old + SL[0]) + SL[1]) + SL[2]) + SL[3])
+            = 2^4X_old + 2^4SL[0] + 2^3SL[1] + 2^2SL[2] + 2SL[3]
+        */
+        X = gf_2_128_double_five(X, SL);
+        
+        SL[0] = XOR(SL[0], tkp[index + 1]); \
+        SL[1] = XOR(SL[1], tkp[index + 3]); \
+        SL[2] = XOR(SL[2], tkp[index + 5]); \
+        SL[3] = XOR(SL[3], tkp[index + 7]);
+        /*
+            We need to compute:
+            Y_new = Y_old + CR[0] + CR[1] + CR[2] + CR[3]
+        */
+        accumulate_four_stateful(SL, Y);
 
         index += 8;
         --iters;
@@ -385,12 +407,12 @@ int prp_encrypt(prp_ctx     * restrict ctx,
 
     remaining = local_len % (npblks*2);
     while (remaining >= 32) {
-        S = XOR(Ll, ctp[index]);      Ll = increment(Ll); 
-        T = XOR(Lr, ctp[index +  1]); Lr = increment(Lr); 
+        S = XOR(Ll, ctp[index]);      Ll = Double(Ll); 
+        T = XOR(Lr, ctp[index +  1]); Lr = Double(Lr); 
         T = XOR(TWO, T);
         TAES(S, ctx->round_keys_h, T, t);
         Y = XOR(Y, XOR(S, ctp[index+1]));
-        X = XOR(X, S); X = increment(X); 
+        X = XOR(X, S); X = Double(X); 
         index += 2;
         remaining -= 32;
     }
@@ -398,19 +420,19 @@ int prp_encrypt(prp_ctx     * restrict ctx,
         ST[0] = ZERO();
         ST[1] = ZERO();
         memcpy(ST, ctp+index, remaining);
-        S = XOR(Ll, ST[0]); Ll = increment(Ll); 
-        T = XOR(Lr, ST[1]); Lr = increment(Lr);
+        S = XOR(Ll, ST[0]); Ll = Double(Ll); 
+        T = XOR(Lr, ST[1]); Lr = Double(Lr);
         T = XOR(T, THREE); //DomainSep
         TAES(S, ctx->round_keys_h, T, t);
         
         Y = XOR(Y,  XOR(S, ST[1]));
-        X = XOR(X, S); X = increment(X); 
+        X = XOR(X, S); X = Double(X); 
     }
     //Handel Length 
     S = XOR(Ll, LEN);
     TAES(S, ctx->round_keys_h, Lr, t);
     Y = XOR(Y, S);
-    X = increment(X);
+    X = Double(X);
 /*----------------- Process First Two Blocks ----------------------*/
     //FInalization Of Hash
     Z = X; W = Y;
