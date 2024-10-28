@@ -75,13 +75,14 @@ int main() {
     DEOXYS_128_256_decrypt(dkey, dtweak, c, p);
     printreg(p, 16);
 
-    printf("----------------------------------------------------\n");
+    printf("---------------Test Parallel Four---------------------\n");
     test_parallel_4(p, tweak, ekey);
     printf("----------------------------------------------------\n");
 
     __m128i S, T, t;
     T = _mm_load_si128 ((BLOCK*)tweak);
     S = _mm_load_si128 ((BLOCK*)p);
+    printreg(&S, 16);
     TAES(S, ekey, T, t);
     printreg(&S, 16);
     TAESD(S, dkey, T, t);

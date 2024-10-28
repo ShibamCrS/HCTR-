@@ -3,13 +3,13 @@
 #define DEOXYS_BC_128_256_NUM_ROUNDS      14
 #define DEOXYS_BC_128_256_NUM_ROUND_KEYS  (DEOXYS_BC_128_256_NUM_ROUNDS+1)
 
-#define H_PERMUTATION _mm_setr_epi8(7,0,13,10, 11,4,1,14, 15,8,5,2, 3,12,9,6)
-#define H_PERMUTATION_14 _mm_setr_epi8(0x06,0x0f,0x04,0x0d,0x0a,0x03,0x08,0x01,0x0e,0x07,0x0c,0x05,0x02,0x0b,0x00,0x09)
-#define H_PERMUTATION_INV _mm_setr_epi8( 1,6,11,12,5,10,15,0,9,14,3,4,13,2,7,8)
+#define H_PERMUTATION _mm_setr_epi8( 1,6,11,12,5,10,15,0,9,14,3,4,13,2,7,8)
+#define H_PERMUTATION_INV _mm_setr_epi8(7,0,13,10, 11,4,1,14, 15,8,5,2, 3,12,9,6)
+#define H_PERMUTATION_14 _mm_setr_epi8(14,7,12,5,2,11,0,9,6,15,4,13,10,3,8,1)
 
-#define PERMUTE(x)     _mm_shuffle_epi8(x, H_PERMUTATION  )
+#define PERMUTE(x)        _mm_shuffle_epi8(x, H_PERMUTATION  )
 #define PERMUTEINV(x)     _mm_shuffle_epi8(x, H_PERMUTATION_INV)
-#define PERMUTE14(x)     _mm_shuffle_epi8(x, H_PERMUTATION_14)
+#define PERMUTE14(x)      _mm_shuffle_epi8(x, H_PERMUTATION_14)
 
 /*---------------From SUPERCOP DEOXYSBC---------------------------------------*/
     /*4 parallel UPDATES */
