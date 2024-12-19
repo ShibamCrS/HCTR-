@@ -259,10 +259,10 @@ int prp_encrypt(prp_ctx     * restrict ctx,
     U = Double(U); U = XOR(U, S); 
     V = XOR(V, S);
     //FInalization Of Hash
-    Z = U; W = U;
-    U = TRUNC(V, TWO); V = TRUNC(V, THREE);
-    TAES(Z, ctx->round_keys_h, U, t);
-    TAES(W, ctx->round_keys_h, V, t);
+    Z = U; W = V;
+    V = TRUNC(V, TWO); U = TRUNC(U, THREE);
+    TAES(Z, ctx->round_keys_h, V, t);
+    TAES(W, ctx->round_keys_h, U, t);
 
 /*-----------------Process Upper Part Of The First Two Blocks----------------*/
     Z = XOR(ptp[0], Z);
@@ -420,10 +420,10 @@ int prp_encrypt(prp_ctx     * restrict ctx,
     V = XOR(V, S);
 /*----------------- Process First Two Blocks ----------------------*/
     //FInalization Of Hash
-    Z = U; W = U;
-    U = TRUNC(V, TWO); V = TRUNC(V, THREE);
-    TAES(Z, ctx->round_keys_h, U, t);
-    TAES(W, ctx->round_keys_h, V, t);
+    Z = U; W = V;
+    V = TRUNC(V, TWO); U = TRUNC(U, THREE);
+    TAES(Z, ctx->round_keys_h, V, t);
+    TAES(W, ctx->round_keys_h, U, t);
 
     ctp[0] = XOR(ctp[0], Z);
     ctp[1] = XOR(ctp[1], W);
