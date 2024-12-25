@@ -1,4 +1,4 @@
-This repository contains an optimized implementation of PHCTR+ and ZHCTR+ in C. 
+This repository contains an optimized implementation of PHCTR+ and ZHCTR+ in C with 3 round LR (TLR3). 
 
 To compile, we need to provide the following command:
 > make
