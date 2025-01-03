@@ -95,7 +95,7 @@ int prp_encrypt(prp_ctx     * restrict ctx,
                int        encrypt)
 {
     unsigned i, j, k, remaining=0, iters, npblks, index, local_len;
-    BLOCK       * restrict ctp = (BLOCK *)ct;
+    BLOCK       * ctp = (BLOCK *)ct;
     const BLOCK * restrict ptp = (BLOCK *)pt;
     const BLOCK * restrict tkp = (BLOCK *)tk;
     BLOCK U, V, Z, W, ctr;
@@ -218,10 +218,10 @@ int prp_encrypt(prp_ctx     * restrict ctx,
         
         U = gf_2_128_double_four(U, SL);
         
-        SL[0] = XOR(SL[0], tkp[index + 1]); \
-        SL[1] = XOR(SL[1], tkp[index + 3]); \
-        SL[2] = XOR(SL[2], tkp[index + 5]); \
-        SL[3] = XOR(SL[3], tkp[index + 7]);
+        SL[0] = XOR(SL[0], ptp[index + 1]); \
+        SL[1] = XOR(SL[1], ptp[index + 3]); \
+        SL[2] = XOR(SL[2], ptp[index + 5]); \
+        SL[3] = XOR(SL[3], ptp[index + 7]);
         
         accumulate_four_stateful(V, SL);
 
@@ -380,10 +380,10 @@ int prp_encrypt(prp_ctx     * restrict ctx,
         
         U = gf_2_128_double_four(U, SL);
         
-        SL[0] = XOR(SL[0], tkp[index + 1]); \
-        SL[1] = XOR(SL[1], tkp[index + 3]); \
-        SL[2] = XOR(SL[2], tkp[index + 5]); \
-        SL[3] = XOR(SL[3], tkp[index + 7]);
+        SL[0] = XOR(SL[0], ctp[index + 1]); \
+        SL[1] = XOR(SL[1], ctp[index + 3]); \
+        SL[2] = XOR(SL[2], ctp[index + 5]); \
+        SL[3] = XOR(SL[3], ctp[index + 7]);
         
         accumulate_four_stateful(V, SL);
 

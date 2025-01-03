@@ -32,8 +32,9 @@ void printkeys(prp_ctx     * restrict ctx) {
    printkey(ctx->round_keys_c); 
 }
 
-#define VAL_LEN  128
-#define TWK_LEN  1024
+#define VAL_LEN  65536
+/* #define VAL_LEN  128 */
+#define TWK_LEN  128
 void simple_time_test() {
     ALIGN(16) unsigned char key[16] = {0x2B,0x7E,0x15,0x16,0x28,0xAE,0xD2,0xA6,0xAB,0xF7,0x15,0x88,0x09,0xCF,0x4F,0x3C};
 
@@ -91,7 +92,7 @@ void multi_len_time_test() {
 }
 int main() {
     simple_time_test();
-    multi_len_time_test();
+    /* multi_len_time_test(); */
     return 0;
 }
 

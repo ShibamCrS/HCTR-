@@ -13,29 +13,29 @@
 
 /*---------------From SUPERCOP DEOXYSBC---------------------------------------*/
     /*4 parallel UPDATES */
-#define UPDATE_TWEAK(tweak, I) \
+#define UPDATE_TWEAK(tweak, I){ \
     tweak[I][0] = PERMUTE(tweak[I-1][0]);\
     tweak[I][1] = PERMUTE(tweak[I-1][1]);\
     tweak[I][2] = PERMUTE(tweak[I-1][2]);\
     tweak[I][3] = PERMUTE(tweak[I-1][3]);\
-;
+}
     /* 4 parallel encryptions */
-#define ONE_XOR( s, subkey, tweak )\
+#define ONE_XOR( s, subkey, tweak ){\
     s[0] = XOR( s[0] , XOR(subkey , tweak[0][0]) );\
     s[1] = XOR( s[1] , XOR(subkey , tweak[0][1]) );\
     s[2] = XOR( s[2] , XOR(subkey , tweak[0][2]) );\
     s[3] = XOR( s[3] , XOR(subkey , tweak[0][3]) ); \
-;
+}
 
 //One round AES on 4 parallel blocks
-#define ONE_ROUND( s, subkey, tweak , Round )\
+#define ONE_ROUND( s, subkey, tweak , Round ){\
     s[0] = ENC( s[0] , XOR(subkey, tweak[Round][0] ) );\
     s[1] = ENC( s[1] , XOR(subkey, tweak[Round][1] ) );\
     s[2] = ENC( s[2] , XOR(subkey, tweak[Round][2] ) );\
     s[3] = ENC( s[3] , XOR(subkey, tweak[Round][3] ) );\
-;
+}
 
-#define DEOXYS( states, subkeys, tweak ) \
+#define DEOXYS( states, subkeys, tweak ) {\
   ONE_XOR  ( states , subkeys[ 0] , tweak      );\
   ONE_ROUND( states , subkeys[ 1] , tweak ,  1 );\
   ONE_ROUND( states , subkeys[ 2] , tweak ,  2 );\
@@ -51,7 +51,7 @@
   ONE_ROUND( states , subkeys[12] , tweak ,  4 );\
   ONE_ROUND( states , subkeys[13] , tweak ,  5 );\
   ONE_ROUND( states , subkeys[14] , tweak ,  6 );\
-  ;
+}
 
 /* Tweakable AES */
 #define TAES( s , subkeys , realtweak, t)\

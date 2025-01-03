@@ -87,7 +87,7 @@ int prp_encrypt(prp_ctx     * restrict ctx,
                int        encrypt)
 {
     unsigned i, j, k, remaining=0, iters, npblks, index, local_len;
-    BLOCK       * restrict ctp = (BLOCK *)ct;
+    BLOCK       * ctp = (BLOCK *)ct;
     const BLOCK * restrict ptp = (BLOCK *)pt;
     const BLOCK * restrict tkp = (BLOCK *)tk;
     BLOCK X, Y, Z, W, ctr;
