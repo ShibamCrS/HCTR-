@@ -114,7 +114,6 @@ int prp_encrypt(prp_ctx     * restrict ctx,
         ctr =  ADD_ONE(ctr); RT[0][1] = ctr;
         ctr =  ADD_ONE(ctr); RT[0][2] = ctr;
         ctr =  ADD_ONE(ctr); RT[0][3] = ctr;
-            
         /* for(i=1; i<8; i++) UPDATE_TWEAK(RT, i); */
         for(i=1; i<8; i++){ //UPDATE_TWEAK 
             RT[i][0] = PERMUTE(RT[i-1][0]);
