@@ -127,7 +127,6 @@ int prp_encrypt(prp_ctx     * restrict ctx,
         States[3] = tkp[index+3];
         DEOXYS( States, ctx->round_keys_h, RT )   
         
-        
         Y = gf_2_128_double_four(Y, States);
         accumulate_four_stateful(X, States);
 
@@ -291,7 +290,7 @@ int prp_encrypt(prp_ctx     * restrict ctx,
         --iters;
     }
     remaining = local_len % npblks;
-    while (remaining >= 16) {
+    while (remaining > 0) {
         ctr = ADD_ONE(ctr); T = XOR(ctr, Z);
         S = W;
         TAES(S, ctx->round_keys_c, T, t);

@@ -2,6 +2,7 @@
 #include <stdlib.h>
 #include <string.h>
 #include <stdint.h>
+#include <immintrin.h>
 
 #include "./include/setup.h"
 
@@ -22,6 +23,7 @@ static inline BLOCK increment(BLOCK b) {
     b = _mm_slli_epi32(b, 1);
     return _mm_xor_si128(b,t);
 }
+
 void gf_double(uint8_t* out,
                const uint8_t* in,
                const size_t num_bytes) {
@@ -249,4 +251,12 @@ int main() {
 
     printf("------------------------------------------------------\n");
     test_parallel_mul();
+
+    __m512i A = _mm512_set_epi64(0, 0xF, 0, 0xF, 0, 0xF, 0, 0xF);
+    __m512i B = _mm512_set_epi64(0, 135, 0, 135, 0, 135, 0, 135);
+    __m512i C = _mm512_clmulepi64_epi128(A, B, 0x00);
+    printf("------------------------------------------------------\n");
+    printreg(&A, 64);
+    printreg(&B, 64);
+    printreg(&C, 64);
 }

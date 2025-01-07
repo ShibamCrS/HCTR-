@@ -140,7 +140,7 @@ int prp_encrypt(prp_ctx     * restrict ctx,
         SR[0][1] = TRUNC(SR[0][1],ONE);\
         SR[0][2] = TRUNC(SR[0][2],ONE);\
         SR[0][3] = TRUNC(SR[0][3],ONE);
-        
+
         for(i=1; i<8; i++){ //UPDATE_TWEAK 
             SR[i][0] = PERMUTE(SR[i-1][0]);
             SR[i][1] = PERMUTE(SR[i-1][1]);
@@ -337,7 +337,7 @@ int prp_encrypt(prp_ctx     * restrict ctx,
         --iters;
     }
     remaining = local_len % npblks;
-    while (remaining >= 16) {
+    while (remaining > 0) {
         ctr = ADD_ONE(ctr); T = XOR(ctr, Z);
         S = W;
         TAES(S, ctx->round_keys_c, T, t);
