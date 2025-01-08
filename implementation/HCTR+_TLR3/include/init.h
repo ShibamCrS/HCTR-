@@ -1,6 +1,6 @@
 #include "setup.h"
 #include "deoxysbc.h"
-#define BPI 4
+#define BPI 8
 struct _prp_ctx {
     BLOCK round_keys_1 [DEOXYS_BC_128_256_NUM_ROUND_KEYS];
     BLOCK round_keys_2 [DEOXYS_BC_128_256_NUM_ROUND_KEYS];

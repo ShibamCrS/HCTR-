@@ -5,7 +5,6 @@
 #include <time.h>
 
 #define DATAPATH   "./timedata/%s.txt"
-#define BPI 4
 
 #include "./include/setup.h"
 #include "./include/init.h"
@@ -23,6 +22,7 @@ void printkeys(prp_ctx     * restrict ctx) {
    printkey(ctx->round_keys_3); 
    printkey(ctx->round_keys_h); 
    printkey(ctx->round_keys_c); 
+   printf("------------END KEYS-------------------------\n");
 }
 
 #define VAL_LEN  65536

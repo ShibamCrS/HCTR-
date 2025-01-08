@@ -13,15 +13,51 @@
 
 BLOCK phash(const BLOCK * data, const BLOCK key[DEOXYS_BC_128_256_NUM_ROUND_KEYS], uint64_t len, BLOCK ctr, BLOCK *X, BLOCK *Y) {
 
-    unsigned i, remaining, iters, npbytes, index;
+    uint64_t i, index;
     index = 0;
-    npbytes = 16*BPI;
-    iters = len/npbytes;
     BLOCK RT[8][BPI];
     BLOCK States[BPI];
     BLOCK S, T, t;
 
-    while (iters) {
+    while (len >= 128) {
+        ctr =  ADD_ONE(ctr); RT[0][0] = ctr;
+        ctr =  ADD_ONE(ctr); RT[0][1] = ctr;
+        ctr =  ADD_ONE(ctr); RT[0][2] = ctr;
+        ctr =  ADD_ONE(ctr); RT[0][3] = ctr;
+        ctr =  ADD_ONE(ctr); RT[0][4] = ctr;
+        ctr =  ADD_ONE(ctr); RT[0][5] = ctr;
+        ctr =  ADD_ONE(ctr); RT[0][6] = ctr;
+        ctr =  ADD_ONE(ctr); RT[0][7] = ctr;
+        
+        for(i=1; i<8; i++){ //UPDATE_TWEAK 
+            RT[i][0] = PERMUTE(RT[i-1][0]);
+            RT[i][1] = PERMUTE(RT[i-1][1]);
+            RT[i][2] = PERMUTE(RT[i-1][2]);
+            RT[i][3] = PERMUTE(RT[i-1][3]);
+            RT[i][4] = PERMUTE(RT[i-1][4]);
+            RT[i][5] = PERMUTE(RT[i-1][5]);
+            RT[i][6] = PERMUTE(RT[i-1][6]);
+            RT[i][7] = PERMUTE(RT[i-1][7]);
+        }
+        States[0] = data[index  ];
+        States[1] = data[index+1];
+        States[2] = data[index+2];
+        States[3] = data[index+3];
+        States[4] = data[index+4];
+        States[5] = data[index+5];
+        States[6] = data[index+6];
+        States[7] = data[index+7];
+        
+        DEOXYS8( States, key, RT )   
+        
+        *Y = gf_2_128_double_eight(*Y, States);
+        accumulate_eight_stateful(*X, States);
+
+        index += BPI;
+        len -= 128;
+    }
+    
+    while (len >= 64) {
         ctr =  ADD_ONE(ctr); RT[0][0] = ctr;
         ctr =  ADD_ONE(ctr); RT[0][1] = ctr;
         ctr =  ADD_ONE(ctr); RT[0][2] = ctr;
@@ -37,28 +73,28 @@ BLOCK phash(const BLOCK * data, const BLOCK key[DEOXYS_BC_128_256_NUM_ROUND_KEYS
         States[1] = data[index+1];
         States[2] = data[index+2];
         States[3] = data[index+3];
-        DEOXYS( States, key, RT )   
+        
+        DEOXYS4( States, key, RT )   
         
         *Y = gf_2_128_double_four(*Y, States);
         accumulate_four_stateful(*X, States);
 
-        index += BPI;
-        --iters;
+        index += 4;
+        len -= 64;
     }
-    
-    remaining = len % npbytes;
-    while (remaining >= 16) {
+
+    while (len >= 16) {
         ctr = ADD_ONE(ctr); T = ctr; S = data[index];
         TAES(S, key, T, t);
         *X = XOR(*X, S);
         *Y = Double(*Y); *Y = XOR(*Y, S);   
+        len -= 16;
         index += 1;
-        remaining -= 16;
     }
-    if (remaining > 0) { //If the last block is not full
+    if (len > 0) { //If the last block is not full
         ctr = ADD_ONE(ctr); T = ctr; //DomainSep
         S = ZERO();
-        memcpy(&S, data+index, remaining); //With 0* padding
+        memcpy(&S, data+index, len); //With 0* padding
         TAES(S, key, T, t);
         *X = XOR(*X, S);
         *Y = Double(*Y); *Y = XOR(*Y, S);   

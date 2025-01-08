@@ -4,8 +4,6 @@
 #include <stdint.h>
 #include <time.h>
 
-#define BPI 4
-
 #include "./include/setup.h"
 #include "./include/init.h"
 #include "./include/utility.h"

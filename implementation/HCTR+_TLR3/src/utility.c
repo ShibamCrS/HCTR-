@@ -33,7 +33,7 @@ BLOCK Double(BLOCK b) {
         = 2^4Y + 2^3S[0] + 2^2S[1] + 2S[2] + S[3]
 */
 
-BLOCK gf_2_128_double_four(BLOCK Y, BLOCK S[4]) {
+BLOCK gf_2_128_double_four(BLOCK Y, BLOCK *S) {
     BLOCK tmp[4];
     tmp[0] = _mm_srli_epi64(Y   , 60);
     tmp[1] = _mm_srli_epi64(S[0], 61);
@@ -58,19 +58,86 @@ BLOCK gf_2_128_double_four(BLOCK Y, BLOCK S[4]) {
     sum = XOR(sum, S[3]);
     return sum;
 }
+BLOCK gf_2_128_double_eight(BLOCK Y, BLOCK *S) {
+    BLOCK tmp[8];
+    tmp[0] = _mm_srli_epi64(Y   , 56);
+    tmp[1] = _mm_srli_epi64(S[0], 57);
+    tmp[2] = _mm_srli_epi64(S[1], 58);
+    tmp[3] = _mm_srli_epi64(S[2], 59);
+    tmp[4] = _mm_srli_epi64(S[3], 60);
+    tmp[5] = _mm_srli_epi64(S[4], 61);
+    tmp[6] = _mm_srli_epi64(S[5], 62);
+    tmp[7] = _mm_srli_epi64(S[6], 63);
 
+    BLOCK sum;
+    accumulate_eight(tmp, sum);
+
+    BLOCK mod =  _mm_clmulepi64_si128(sum, REDUCTION_POLYNOMIAL, 0x01);
+
+    BLOCK sum_low = _mm_bslli_si128(sum, 8);
+
+    tmp[0] = _mm_slli_epi64(Y,    8);
+    tmp[1] = _mm_slli_epi64(S[0], 7);
+    tmp[2] = _mm_slli_epi64(S[1], 6);
+    tmp[3] = _mm_slli_epi64(S[2], 5);
+    tmp[4] = _mm_slli_epi64(S[3], 4);
+    tmp[5] = _mm_slli_epi64(S[4], 3);
+    tmp[6] = _mm_slli_epi64(S[5], 2);
+    tmp[7] = _mm_slli_epi64(S[6], 1);
+
+    accumulate_eight(tmp, sum);
+    sum = XOR(sum, sum_low);
+    sum = XOR(sum, mod);
+    sum = XOR(sum, S[7]);
+    return sum;
+}
 void ctr_mode(const BLOCK *ptp, const BLOCK key[DEOXYS_BC_128_256_NUM_ROUND_KEYS], uint64_t len, BLOCK W, BLOCK Z, BLOCK *ctp) {
     
-    unsigned remaining, iters, npbytes, index, i;
+    uint64_t index, i;
     index = 0;
-    npbytes = 16*BPI;
-    iters = len/npbytes;
     BLOCK RT[8][BPI];
     BLOCK States[BPI];
 
     BLOCK ctr = ZERO();
     BLOCK S, T, t;
-    while (iters) {
+    while (len >= 128) {
+        ctr =  ADD_ONE(ctr); RT[0][0] = XOR(ctr, Z);
+        ctr =  ADD_ONE(ctr); RT[0][1] = XOR(ctr, Z);
+        ctr =  ADD_ONE(ctr); RT[0][2] = XOR(ctr, Z);
+        ctr =  ADD_ONE(ctr); RT[0][3] = XOR(ctr, Z);
+        ctr =  ADD_ONE(ctr); RT[0][4] = XOR(ctr, Z);
+        ctr =  ADD_ONE(ctr); RT[0][5] = XOR(ctr, Z);
+        ctr =  ADD_ONE(ctr); RT[0][6] = XOR(ctr, Z);
+        ctr =  ADD_ONE(ctr); RT[0][7] = XOR(ctr, Z);
+
+        for(i=1; i<8; i++){ //UPDATE_TWEAK 
+            RT[i][0] = PERMUTE(RT[i-1][0]);
+            RT[i][1] = PERMUTE(RT[i-1][1]);
+            RT[i][2] = PERMUTE(RT[i-1][2]);
+            RT[i][3] = PERMUTE(RT[i-1][3]);
+            RT[i][4] = PERMUTE(RT[i-1][4]);
+            RT[i][5] = PERMUTE(RT[i-1][5]);
+            RT[i][6] = PERMUTE(RT[i-1][6]);
+            RT[i][7] = PERMUTE(RT[i-1][7]);
+        }
+        States[0] = States[1] = States[2] = States[3] = W;
+        States[4] = States[5] = States[6] = States[7] = W;
+        DEOXYS( States, key, RT )
+
+        ctp[index    ] = XOR(States[0], ptp[index    ]);
+        ctp[index + 1] = XOR(States[1], ptp[index + 1]);
+        ctp[index + 2] = XOR(States[2], ptp[index + 2]);
+        ctp[index + 3] = XOR(States[3], ptp[index + 3]);
+        ctp[index + 4] = XOR(States[4], ptp[index + 4]);
+        ctp[index + 5] = XOR(States[5], ptp[index + 5]);
+        ctp[index + 6] = XOR(States[6], ptp[index + 6]);
+        ctp[index + 7] = XOR(States[7], ptp[index + 7]);
+
+        index += BPI;
+        len -= 128;
+    }
+    
+    while(len >= 64) {
         ctr =  ADD_ONE(ctr); RT[0][0] = XOR(ctr, Z);
         ctr =  ADD_ONE(ctr); RT[0][1] = XOR(ctr, Z);
         ctr =  ADD_ONE(ctr); RT[0][2] = XOR(ctr, Z);
@@ -83,24 +150,23 @@ void ctr_mode(const BLOCK *ptp, const BLOCK key[DEOXYS_BC_128_256_NUM_ROUND_KEYS
             RT[i][3] = PERMUTE(RT[i-1][3]);
         }
         States[0] = States[1] = States[2] = States[3] = W;
-        DEOXYS( States, key, RT )
+        DEOXYS4( States, key, RT )
 
         ctp[index    ] = XOR(States[0], ptp[index    ]);
         ctp[index + 1] = XOR(States[1], ptp[index + 1]);
         ctp[index + 2] = XOR(States[2], ptp[index + 2]);
         ctp[index + 3] = XOR(States[3], ptp[index + 3]);
-
-        index += BPI;
-        --iters;
+        
+        index += 4;
+        len -= 64;
     }
-    remaining = len % npbytes;
-    while (remaining > 0) {
+    while (len > 0) {
         ctr = ADD_ONE(ctr); T = XOR(ctr, Z);
         S = W;
         TAES(S, key, T, t);
         ctp[index] = XOR(S, ptp[index]);
         index += 1;
-        remaining -= 16;
+        len -= 16;
     }
 
 }
