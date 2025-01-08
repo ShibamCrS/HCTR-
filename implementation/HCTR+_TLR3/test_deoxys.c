@@ -5,15 +5,8 @@
 
 #include "./include/setup.h"
 #include "./include/deoxysbc.h"
+#include "./include/utility.h"
 
-void printreg(const void *a, int nrof_byte){
-    int i;
-    unsigned char *f = (unsigned char *)a;
-    for(i=0; i < nrof_byte; i++){
-        printf("%02X",(unsigned char) f[i]); //uint8_t c[4+8];
-    }
-    printf("\n");
-}
 void test_parallel_4(unsigned char *p, unsigned char *t, __m128i *ekey){
     /* for(int i=0; i<=DEOXYS_BC_128_256_NUM_ROUNDS; i++) printreg(&ekey[i], 16); */
     __m128i state = _mm_load_si128((__m128i*)p);

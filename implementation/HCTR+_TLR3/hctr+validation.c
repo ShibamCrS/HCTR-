@@ -8,15 +8,8 @@
 
 #include "./include/setup.h"
 #include "./include/init.h"
+#include "./include/utility.h"
 
-void printreg(const void *a, int nrof_byte){
-    int i;
-    unsigned char *f = (unsigned char *)a;
-    for(i=0; i < nrof_byte; i++){
-        printf("%02X",(unsigned char) f[nrof_byte - 1 -i]); //uint8_t c[4+8];
-    }
-    printf("\n");
-}
 #define VAL_LEN 4096
 #define TWK_LEN  1024
 int validation_test() {
