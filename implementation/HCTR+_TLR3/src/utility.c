@@ -95,8 +95,8 @@ void ctr_mode(const BLOCK *ptp, const BLOCK key[DEOXYS_BC_128_256_NUM_ROUND_KEYS
     
     uint64_t index, i;
     index = 0;
-    BLOCK RT[8][BPI];
-    BLOCK States[BPI];
+    BLOCK RT[8][8];
+    BLOCK States[8];
 
     BLOCK ctr = ZERO();
     BLOCK S, T, t;
@@ -133,7 +133,7 @@ void ctr_mode(const BLOCK *ptp, const BLOCK key[DEOXYS_BC_128_256_NUM_ROUND_KEYS
         ctp[index + 6] = XOR(States[6], ptp[index + 6]);
         ctp[index + 7] = XOR(States[7], ptp[index + 7]);
 
-        index += BPI;
+        index += 8;
         len -= 128;
     }
     

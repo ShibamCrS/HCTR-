@@ -104,8 +104,6 @@ void getCompilerConfig(char *outp) {
     #elif __sparc__
     outp += sprintf(outp, "SPARC32");
     #endif
-
-    outp += sprintf(outp, "_parallel_AES_%d", BPI);
 }
 int getTime(char *infoString, char *filename) {
     /* Allocate locals */

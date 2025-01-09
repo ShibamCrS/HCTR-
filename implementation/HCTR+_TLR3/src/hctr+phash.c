@@ -11,12 +11,12 @@
 /* #define PRINT */
 
 
-BLOCK phash(const BLOCK * data, const BLOCK key[DEOXYS_BC_128_256_NUM_ROUND_KEYS], uint64_t len, BLOCK ctr, BLOCK *X, BLOCK *Y) {
+BLOCK phash(const BLOCK * restrict data, const BLOCK key[DEOXYS_BC_128_256_NUM_ROUND_KEYS], uint64_t len, BLOCK ctr, BLOCK *X, BLOCK *Y) {
 
     uint64_t i, index;
     index = 0;
-    BLOCK RT[8][BPI];
-    BLOCK States[BPI];
+    BLOCK RT[8][8];
+    BLOCK States[8];
     BLOCK S, T, t;
 
     while (len >= 128) {
@@ -53,7 +53,7 @@ BLOCK phash(const BLOCK * data, const BLOCK key[DEOXYS_BC_128_256_NUM_ROUND_KEYS
         *Y = gf_2_128_double_eight(*Y, States);
         accumulate_eight_stateful(*X, States);
 
-        index += BPI;
+        index += 8;
         len -= 128;
     }
     
@@ -134,10 +134,10 @@ int prp_encrypt(prp_ctx     * restrict ctx,
 /*-----------------------Process Plaintexts----------------------------*/
     ctr = phash(ptp+2, ctx->round_keys_h, (pt_len - 2*16), ctr, &X, &Y);
     ctr = ADD_ONE(ctr);
-    T = XOR(ctr, ONE);
 /*--------------------------------------------------------------------*/    
     //Handel Length 
     S = LEN;
+    T = XOR(ctr, ONE);
     TAES(S, ctx->round_keys_h, T, t);
     X = XOR(X, S);
     Y = Double(Y); Y = XOR(Y, S);  
@@ -200,11 +200,11 @@ int prp_encrypt(prp_ctx     * restrict ctx,
     X = HT0;
     Y = HT1;
     ctr = phash(ctp+2, ctx->round_keys_h, (pt_len - 2*16), ctr, &X, &Y);
+    ctr = ADD_ONE(ctr);
     
     //Handel Length 
-    ctr = ADD_ONE(ctr);
-    T = XOR(ctr, ONE);
     S = LEN;
+    T = XOR(ctr, ONE);
     TAES(S, ctx->round_keys_h, T, t);
     X = XOR(X, S);
     Y = Double(Y); Y = XOR(Y, S);  
