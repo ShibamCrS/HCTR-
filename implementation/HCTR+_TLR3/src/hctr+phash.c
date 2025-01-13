@@ -19,43 +19,43 @@ BLOCK phash(const BLOCK * restrict data, const BLOCK key[DEOXYS_BC_128_256_NUM_R
     BLOCK States[8];
     BLOCK S, T, t;
 
-    while (len >= 128) {
-        ctr =  ADD_ONE(ctr); RT[0][0] = ctr;
-        ctr =  ADD_ONE(ctr); RT[0][1] = ctr;
-        ctr =  ADD_ONE(ctr); RT[0][2] = ctr;
-        ctr =  ADD_ONE(ctr); RT[0][3] = ctr;
-        ctr =  ADD_ONE(ctr); RT[0][4] = ctr;
-        ctr =  ADD_ONE(ctr); RT[0][5] = ctr;
-        ctr =  ADD_ONE(ctr); RT[0][6] = ctr;
-        ctr =  ADD_ONE(ctr); RT[0][7] = ctr;
+    /* while (len >= 128) { */
+    /*     ctr =  ADD_ONE(ctr); RT[0][0] = ctr; */
+    /*     ctr =  ADD_ONE(ctr); RT[0][1] = ctr; */
+    /*     ctr =  ADD_ONE(ctr); RT[0][2] = ctr; */
+    /*     ctr =  ADD_ONE(ctr); RT[0][3] = ctr; */
+    /*     ctr =  ADD_ONE(ctr); RT[0][4] = ctr; */
+    /*     ctr =  ADD_ONE(ctr); RT[0][5] = ctr; */
+    /*     ctr =  ADD_ONE(ctr); RT[0][6] = ctr; */
+    /*     ctr =  ADD_ONE(ctr); RT[0][7] = ctr; */
         
-        for(i=1; i<8; i++){ //UPDATE_TWEAK 
-            RT[i][0] = PERMUTE(RT[i-1][0]);
-            RT[i][1] = PERMUTE(RT[i-1][1]);
-            RT[i][2] = PERMUTE(RT[i-1][2]);
-            RT[i][3] = PERMUTE(RT[i-1][3]);
-            RT[i][4] = PERMUTE(RT[i-1][4]);
-            RT[i][5] = PERMUTE(RT[i-1][5]);
-            RT[i][6] = PERMUTE(RT[i-1][6]);
-            RT[i][7] = PERMUTE(RT[i-1][7]);
-        }
-        States[0] = data[index  ];
-        States[1] = data[index+1];
-        States[2] = data[index+2];
-        States[3] = data[index+3];
-        States[4] = data[index+4];
-        States[5] = data[index+5];
-        States[6] = data[index+6];
-        States[7] = data[index+7];
+    /*     for(i=1; i<8; i++){ //UPDATE_TWEAK */ 
+    /*         RT[i][0] = PERMUTE(RT[i-1][0]); */
+    /*         RT[i][1] = PERMUTE(RT[i-1][1]); */
+    /*         RT[i][2] = PERMUTE(RT[i-1][2]); */
+    /*         RT[i][3] = PERMUTE(RT[i-1][3]); */
+    /*         RT[i][4] = PERMUTE(RT[i-1][4]); */
+    /*         RT[i][5] = PERMUTE(RT[i-1][5]); */
+    /*         RT[i][6] = PERMUTE(RT[i-1][6]); */
+    /*         RT[i][7] = PERMUTE(RT[i-1][7]); */
+    /*     } */
+    /*     States[0] = data[index  ]; */
+    /*     States[1] = data[index+1]; */
+    /*     States[2] = data[index+2]; */
+    /*     States[3] = data[index+3]; */
+    /*     States[4] = data[index+4]; */
+    /*     States[5] = data[index+5]; */
+    /*     States[6] = data[index+6]; */
+    /*     States[7] = data[index+7]; */
         
-        DEOXYS8( States, key, RT )   
+    /*     DEOXYS8( States, key, RT ) */   
         
-        *Y = gf_2_128_double_eight(*Y, States);
-        accumulate_eight_stateful(*X, States);
+    /*     *Y = gf_2_128_double_eight(*Y, States); */
+    /*     accumulate_eight_stateful(*X, States); */
 
-        index += 8;
-        len -= 128;
-    }
+    /*     index += 8; */
+    /*     len -= 128; */
+    /* } */
     
     while (len >= 64) {
         ctr =  ADD_ONE(ctr); RT[0][0] = ctr;
