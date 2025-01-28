@@ -76,9 +76,9 @@ void simple_time_test() {
     prp_encrypt(ctx,pt,VAL_LEN,tk,TWK_LEN,ct, 1);
     prp_encrypt(ctx,ct,VAL_LEN,tk,TWK_LEN,dt, 0);
 
-    for(int i=0; i< VAL_LEN/16; i++) printreg(pt + 16*i, 16);
+    for(int i=0; i< 6; i++) printreg(pt + 16*i, 16);
     printf("------------------------------------------------------------------\n");
-    for(int i=0; i< VAL_LEN/16; i++) printreg(ct + 16*i, 16);
+    for(int i=0; i< 6; i++) printreg(ct + 16*i, 16);
     printf("------------------------------------------------------------------\n");
 
     int match = memcmp(pt, dt, VAL_LEN);

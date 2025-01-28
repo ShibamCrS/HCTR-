@@ -100,42 +100,42 @@ void ctr_mode(const BLOCK *ptp, const BLOCK key[DEOXYS_BC_128_256_NUM_ROUND_KEYS
 
     BLOCK ctr = ZERO();
     BLOCK S, T, t;
-    while (len >= 128) {
-        ctr =  ADD_ONE(ctr); RT[0][0] = XOR(ctr, Z);
-        ctr =  ADD_ONE(ctr); RT[0][1] = XOR(ctr, Z);
-        ctr =  ADD_ONE(ctr); RT[0][2] = XOR(ctr, Z);
-        ctr =  ADD_ONE(ctr); RT[0][3] = XOR(ctr, Z);
-        ctr =  ADD_ONE(ctr); RT[0][4] = XOR(ctr, Z);
-        ctr =  ADD_ONE(ctr); RT[0][5] = XOR(ctr, Z);
-        ctr =  ADD_ONE(ctr); RT[0][6] = XOR(ctr, Z);
-        ctr =  ADD_ONE(ctr); RT[0][7] = XOR(ctr, Z);
+    /* while (len >= 128) { */
+    /*     ctr =  ADD_ONE(ctr); RT[0][0] = XOR(ctr, Z); */
+    /*     ctr =  ADD_ONE(ctr); RT[0][1] = XOR(ctr, Z); */
+    /*     ctr =  ADD_ONE(ctr); RT[0][2] = XOR(ctr, Z); */
+    /*     ctr =  ADD_ONE(ctr); RT[0][3] = XOR(ctr, Z); */
+    /*     ctr =  ADD_ONE(ctr); RT[0][4] = XOR(ctr, Z); */
+    /*     ctr =  ADD_ONE(ctr); RT[0][5] = XOR(ctr, Z); */
+    /*     ctr =  ADD_ONE(ctr); RT[0][6] = XOR(ctr, Z); */
+    /*     ctr =  ADD_ONE(ctr); RT[0][7] = XOR(ctr, Z); */
 
-        for(i=1; i<8; i++){ //UPDATE_TWEAK 
-            RT[i][0] = PERMUTE(RT[i-1][0]);
-            RT[i][1] = PERMUTE(RT[i-1][1]);
-            RT[i][2] = PERMUTE(RT[i-1][2]);
-            RT[i][3] = PERMUTE(RT[i-1][3]);
-            RT[i][4] = PERMUTE(RT[i-1][4]);
-            RT[i][5] = PERMUTE(RT[i-1][5]);
-            RT[i][6] = PERMUTE(RT[i-1][6]);
-            RT[i][7] = PERMUTE(RT[i-1][7]);
-        }
-        States[0] = States[1] = States[2] = States[3] = W;
-        States[4] = States[5] = States[6] = States[7] = W;
-        DEOXYS( States, key, RT )
+    /*     for(i=1; i<8; i++){ //UPDATE_TWEAK */ 
+    /*         RT[i][0] = PERMUTE(RT[i-1][0]); */
+    /*         RT[i][1] = PERMUTE(RT[i-1][1]); */
+    /*         RT[i][2] = PERMUTE(RT[i-1][2]); */
+    /*         RT[i][3] = PERMUTE(RT[i-1][3]); */
+    /*         RT[i][4] = PERMUTE(RT[i-1][4]); */
+    /*         RT[i][5] = PERMUTE(RT[i-1][5]); */
+    /*         RT[i][6] = PERMUTE(RT[i-1][6]); */
+    /*         RT[i][7] = PERMUTE(RT[i-1][7]); */
+    /*     } */
+    /*     States[0] = States[1] = States[2] = States[3] = W; */
+    /*     States[4] = States[5] = States[6] = States[7] = W; */
+    /*     DEOXYS8( States, key, RT ) */
 
-        ctp[index    ] = XOR(States[0], ptp[index    ]);
-        ctp[index + 1] = XOR(States[1], ptp[index + 1]);
-        ctp[index + 2] = XOR(States[2], ptp[index + 2]);
-        ctp[index + 3] = XOR(States[3], ptp[index + 3]);
-        ctp[index + 4] = XOR(States[4], ptp[index + 4]);
-        ctp[index + 5] = XOR(States[5], ptp[index + 5]);
-        ctp[index + 6] = XOR(States[6], ptp[index + 6]);
-        ctp[index + 7] = XOR(States[7], ptp[index + 7]);
+    /*     ctp[index    ] = XOR(States[0], ptp[index    ]); */
+    /*     ctp[index + 1] = XOR(States[1], ptp[index + 1]); */
+    /*     ctp[index + 2] = XOR(States[2], ptp[index + 2]); */
+    /*     ctp[index + 3] = XOR(States[3], ptp[index + 3]); */
+    /*     ctp[index + 4] = XOR(States[4], ptp[index + 4]); */
+    /*     ctp[index + 5] = XOR(States[5], ptp[index + 5]); */
+    /*     ctp[index + 6] = XOR(States[6], ptp[index + 6]); */
+    /*     ctp[index + 7] = XOR(States[7], ptp[index + 7]); */
 
-        index += 8;
-        len -= 128;
-    }
+    /*     index += 8; */
+    /*     len -= 128; */
+    /* } */
     
     while(len >= 64) {
         ctr =  ADD_ONE(ctr); RT[0][0] = XOR(ctr, Z);
