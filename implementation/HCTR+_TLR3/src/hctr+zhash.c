@@ -16,62 +16,8 @@ void zhash(const BLOCK * data, const BLOCK key[DEOXYS_BC_128_256_NUM_ROUND_KEYS]
     BLOCK SR[8][8];
     BLOCK SL[8];
     BLOCK S, T, t;
-    /* while (len >= 256) { */
-    /*     SL[0] = XOR(*Ll, data[index     ]); *Ll = Double(*Ll); */ 
-    /*     SL[1] = XOR(*Ll, data[index +  2]); *Ll = Double(*Ll); */ 
-    /*     SL[2] = XOR(*Ll, data[index +  4]); *Ll = Double(*Ll); */ 
-    /*     SL[3] = XOR(*Ll, data[index +  6]); *Ll = Double(*Ll); */ 
-    /*     SL[4] = XOR(*Ll, data[index +  8]); *Ll = Double(*Ll); */ 
-    /*     SL[5] = XOR(*Ll, data[index + 10]); *Ll = Double(*Ll); */ 
-    /*     SL[6] = XOR(*Ll, data[index + 12]); *Ll = Double(*Ll); */ 
-    /*     SL[7] = XOR(*Ll, data[index + 14]); *Ll = Double(*Ll); */ 
 
-    /*     SR[0][0]  = XOR(*Lr, data[index +  1]); *Lr = Double(*Lr); */ 
-    /*     SR[0][1]  = XOR(*Lr, data[index +  3]); *Lr = Double(*Lr); */ 
-    /*     SR[0][2]  = XOR(*Lr, data[index +  5]); *Lr = Double(*Lr); */ 
-    /*     SR[0][3]  = XOR(*Lr, data[index +  7]); *Lr = Double(*Lr); */ 
-    /*     SR[0][4]  = XOR(*Lr, data[index +  9]); *Lr = Double(*Lr); */ 
-    /*     SR[0][5]  = XOR(*Lr, data[index + 11]); *Lr = Double(*Lr); */ 
-    /*     SR[0][6]  = XOR(*Lr, data[index + 13]); *Lr = Double(*Lr); */ 
-    /*     SR[0][7]  = XOR(*Lr, data[index + 15]); *Lr = Double(*Lr); */ 
-        
-    /*     SR[0][0] = TRUNC(SR[0][0],ONE);\ */
-    /*     SR[0][1] = TRUNC(SR[0][1],ONE);\ */
-    /*     SR[0][2] = TRUNC(SR[0][2],ONE);\ */
-    /*     SR[0][3] = TRUNC(SR[0][3],ONE); */
-    /*     SR[0][4] = TRUNC(SR[0][4],ONE); */
-    /*     SR[0][5] = TRUNC(SR[0][5],ONE); */
-    /*     SR[0][6] = TRUNC(SR[0][6],ONE); */
-    /*     SR[0][7] = TRUNC(SR[0][7],ONE); */
-
-    /*     for(i=1; i<8; i++){ //UPDATE_TWEAK */ 
-    /*         SR[i][0] = PERMUTE(SR[i-1][0]); */
-    /*         SR[i][1] = PERMUTE(SR[i-1][1]); */
-    /*         SR[i][2] = PERMUTE(SR[i-1][2]); */
-    /*         SR[i][3] = PERMUTE(SR[i-1][3]); */
-    /*         SR[i][4] = PERMUTE(SR[i-1][4]); */
-    /*         SR[i][5] = PERMUTE(SR[i-1][5]); */
-    /*         SR[i][6] = PERMUTE(SR[i-1][6]); */
-    /*         SR[i][7] = PERMUTE(SR[i-1][7]); */
-    /*     } */
-    /*     DEOXYS8( SL, key, SR )  //CL == SL */
-
-    /*     *U = gf_2_128_double_eight(*U, SL); */
-        
-    /*     SL[0] = XOR(SL[0], data[index + 1]); \ */
-    /*     SL[1] = XOR(SL[1], data[index + 3]); \ */
-    /*     SL[2] = XOR(SL[2], data[index + 5]); \ */
-    /*     SL[3] = XOR(SL[3], data[index + 7]); */
-    /*     SL[4] = XOR(SL[4], data[index + 9]); */
-    /*     SL[5] = XOR(SL[5], data[index +11]); */
-    /*     SL[6] = XOR(SL[6], data[index +13]); */
-    /*     SL[7] = XOR(SL[7], data[index +15]); */
-        
-    /*     accumulate_eight_stateful(*V, SL); */
-                
-    /*     index += 16; */
-    /*     len -= 256; */
-    /* } */
+    
     while (len >= 128) {
         SL[0] = XOR(*Ll, data[index     ]); *Ll = Double(*Ll); 
         SL[1] = XOR(*Ll, data[index +  2]); *Ll = Double(*Ll); 

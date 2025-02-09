@@ -203,8 +203,8 @@ int getTimeMy(char *infoString, char *filename) {
     double ipi=0, tmpd;
     
     /* populate iter_list, terminate list with negative number */
-    int msg_len_list[EXP] = {128, 256, 512, 1024, 2048, 4096, 8192, 16384, 32768, 65536, -1}; 
-    int twk_len_list[EXP] = {0, 512, 1024, 2048, 4096, 8192, 16384, 32768, 65536, -1}; 
+    int msg_len_list[EXP] = {1024, 2048, 4096, 8192, 16384, 32768, 65536, -1}; 
+    int twk_len_list[EXP] = {0, 16, 1024, 2048, 4096, 8192, 16384, 32768, 65536, -1}; 
 
     FILE *fp = fopen(filename, "w");
     char str_time[25];

@@ -30,7 +30,7 @@ int prp_init(prp_ctx *ctx, const void *mkey, int key_len, int tk_len){
     ctr =  ADD_ONE(ctr); States[1] = ctr;
     ctr =  ADD_ONE(ctr); States[2] = ctr;
     ctr =  ADD_ONE(ctr); States[3] = ctr;
-    DEOXYS( States, round_keys, RT )
+    DEOXYS4( States, round_keys, RT )
 
     DEOXYS_128_256_setup_key((unsigned char *)(&States[0]),  ctx->round_keys_1);
     DEOXYS_128_256_setup_key((unsigned char *)(&States[1]),  ctx->round_keys_2);

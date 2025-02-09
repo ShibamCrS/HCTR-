@@ -1,10 +1,7 @@
 FLAGS=-O3 -march=native #-g -fsanitize=address
 CC=gcc
 
-all: deoxys hctr+phash_validation hctr+zhash_validation hctr+phash_benchmark hctr+zhash_benchmark 
-
-deoxys: test_deoxys.c ./src/deoxysbc.c ./src/utility.c 
-	$(CC) $(FLAGS) $^ -o $@
+all: hctr+phash_validation hctr+zhash_validation hctr+phash_benchmark hctr+zhash_benchmark 
 
 hctr+phash_validation: ./src/hctr+phash.c hctr+validation.c ./src/deoxysbc.c ./src/init.c ./src/utility.c
 	$(CC) $(FLAGS) $^ -o $@
