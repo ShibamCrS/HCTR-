@@ -71,14 +71,16 @@
   ONE_ROUND4( states , subkeys[13] , tweak ,  5 );\
   ONE_ROUND4( states , subkeys[14] , tweak ,  6 );\
 }
-#define ONE_XOR2( s, subkey, tweak )\
+#define ONE_XOR2( s, subkey, tweak ){ \
     s[0] = _mm512_xor_si512(s[0], _mm512_xor_si512(subkey, tweak[0][0]));\
-    s[1] = _mm512_xor_si512(s[1], _mm512_xor_si512(subkey, tweak[0][1]));\
-;
-#define ONE_ROUND2( s, subkey, tweak , Round )\
-    s[0] = _mm512_aesenc_epi128(s[0], _mm512_xor_si512(subkey, tweak[Round][0]));\
-    s[1] = _mm512_aesenc_epi128(s[1], _mm512_xor_si512(subkey, tweak[Round][1]));\
-;
+    s[1] = _mm512_xor_si512(s[1], _mm512_xor_si512(subkey, tweak[1][0]));\
+}
+
+#define ONE_ROUND2( s, subkey, tweak , Round ) {\
+    s[0] = _mm512_aesenc_epi128(s[0], _mm512_xor_si512(subkey, tweak[0][Round]));\
+    s[1] = _mm512_aesenc_epi128(s[1], _mm512_xor_si512(subkey, tweak[1][Round]));\
+}
+
 #define DEOXYS2( states, subkeys, tweak ) {\
   ONE_XOR2  ( states , subkeys[ 0] , tweak      );\
   ONE_ROUND2( states , subkeys[ 1] , tweak ,  1 );\
@@ -298,35 +300,6 @@
   ONE_ROUND_TWEAK_DEPENDENT_512(states, subkeys[12], tweaks[4]); \
   ONE_ROUND_TWEAK_DEPENDENT_512(states, subkeys[13], tweaks[5]); \
   ONE_ROUND_TWEAK_DEPENDENT_512(states, subkeys[14], tweaks[6]); \
-}
-
-// ---------------------------------------------------------------------
-
-// ---------------------------------------------------------
-
-#define ONE_ROUND_TWEAK_DEPENDENT_512_z(s, subkey, tweak){\
-    s = ENC4(s, XOR4(subkey, tweak));\
-}
-#define ONE_XOR_HASH_INPUT_512_z(s, key, tweak){\
-    s = XOR4(s, XOR4(key, tweak)); \
-}
-
-#define DEOXYS_HASH_INPUT_512_z(state, subkeys, tweaks) { \
-  ONE_XOR_HASH_INPUT_512_z(state, subkeys[ 0], tweaks[0]); \
-  ONE_ROUND_TWEAK_DEPENDENT_512_z(state, subkeys[ 1], tweaks[1]); \
-  ONE_ROUND_TWEAK_DEPENDENT_512_z(state, subkeys[ 2], tweaks[2]); \
-  ONE_ROUND_TWEAK_DEPENDENT_512_z(state, subkeys[ 3], tweaks[3]); \
-  ONE_ROUND_TWEAK_DEPENDENT_512_z(state, subkeys[ 4], tweaks[4]); \
-  ONE_ROUND_TWEAK_DEPENDENT_512_z(state, subkeys[ 5], tweaks[5]); \
-  ONE_ROUND_TWEAK_DEPENDENT_512_z(state, subkeys[ 6], tweaks[6]); \
-  ONE_ROUND_TWEAK_DEPENDENT_512_z(state, subkeys[ 7], tweaks[7]); \
-  ONE_ROUND_TWEAK_DEPENDENT_512_z(state, subkeys[ 8], tweaks[0]); \
-  ONE_ROUND_TWEAK_DEPENDENT_512_z(state, subkeys[ 9], tweaks[1]); \
-  ONE_ROUND_TWEAK_DEPENDENT_512_z(state, subkeys[10], tweaks[2]); \
-  ONE_ROUND_TWEAK_DEPENDENT_512_z(state, subkeys[11], tweaks[3]); \
-  ONE_ROUND_TWEAK_DEPENDENT_512_z(state, subkeys[12], tweaks[4]); \
-  ONE_ROUND_TWEAK_DEPENDENT_512_z(state, subkeys[13], tweaks[5]); \
-  ONE_ROUND_TWEAK_DEPENDENT_512_z(state, subkeys[14], tweaks[6]); \
 }
 
 // ---------------------------------------------------------------------

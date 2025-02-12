@@ -191,9 +191,9 @@ int getTime(char *infoString, char *filename) {
 #define EXP 16 //16 diff length of msgs
 int getTimeMy(char *infoString, char *filename) {
     /* Allocate locals */
-    ALIGN(16) char pt[65536] = {0};
-    ALIGN(16) unsigned char tk[65536];  // = "abcdefghijklmnopabcdefghijklmnop";  //2n bit tweak
-    ALIGN(16) unsigned char key[] = "abcdefghijklmnop";
+    char pt[65536] = {0};
+    unsigned char tk[65536];  // = "abcdefghijklmnopabcdefghijklmnop";  //2n bit tweak
+    unsigned char key[] = "abcdefghijklmnop";
     char outbuf[MAX_ITER*15+1024];
     
     prp_ctx *ctx = prp_allocate(NULL);
@@ -238,7 +238,8 @@ int getTimeMy(char *infoString, char *filename) {
         twk_len = twk_len_list[j];
         while(twk_len >= 0) {
             tk[twk_len - 2] = 0;
-            DO(prp_encrypt(ctx, pt, len, tk, twk_len, pt, 1); tk[twk_len - 2] += 1);
+            /* DO(prp_encrypt(ctx, pt, len, tk, twk_len, pt, 1); tk[twk_len - 2] += 1); */
+            DO(prp_encrypt(ctx, pt, len, tk, twk_len, pt, 1););
             tmpd = ((median_get())/((double)(len+twk_len)*(double)N));
             outp += sprintf(outp, "%5d %5d  %6.2f\n", len, twk_len, tmpd);
             ++j;

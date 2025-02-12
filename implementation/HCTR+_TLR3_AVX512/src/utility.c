@@ -103,10 +103,6 @@ void ctr_mode(const BLOCK *ptp, const BLOCK4 key4[DEOXYS_BC_128_256_NUM_ROUND_KE
     BLOCK4 state[2], RT[8], tmp, ctr4;
     ctr4 = CTR3210;
 
-    /* BLOCK4 key4[DEOXYS_BC_128_256_NUM_ROUND_KEYS]; */
-    /* for(int i=0; i<=DEOXYS_BC_128_256_NUM_ROUNDS; i++){ */
-    /*     key4[i] = _mm512_broadcast_i64x2(key[i]); */
-    /* } */
     BLOCK4 WW = zbroadcast(W);
     BLOCK4 ZZ = zbroadcast(Z);
     WW = XOR4(WW, key4[0]);
@@ -139,7 +135,8 @@ void ctr_mode(const BLOCK *ptp, const BLOCK4 key4[DEOXYS_BC_128_256_NUM_ROUND_KE
         index  += 4;
         len -= 64;
     }
-    ctr = _mm512_extracti64x2_epi64(ctr4, 0);
+    /* ctr = _mm512_extracti64x2_epi64(ctr4, 0); */
+    ctr = ((BLOCK *)(&ctr4))[0];
     while (len > 0) {
         T = XOR(ctr, Z);
         S = W;
@@ -149,51 +146,4 @@ void ctr_mode(const BLOCK *ptp, const BLOCK4 key4[DEOXYS_BC_128_256_NUM_ROUND_KE
         index += 1;
         len -= 16;
     }
-
-    /* BLOCK4 state[2], RT[8][2], RTT[8], ctr4; */
-    /* ctr4 = CTR0123; */
-    /* while (len >= 128) { */
-    /*      ctr4   =  ADD4444(ctr4); RT[0][0]  = XOR4(ZZ, ctr4); */
-    /*      ctr4   =  ADD4444(ctr4); RT[0][1]  = XOR4(ZZ, ctr4); */
- 
-    /*      for(i=1; i<8; i++){ //UPDATE_TWEAK */ 
-    /*          RT[i][0] = PERMUTE_512(RT[i-1][0]); */
-    /*          RT[i][1] = PERMUTE_512(RT[i-1][1]); */
-    /*      } */
- 
-    /*      state[0] = state[1] = WW; */
-    /*      DEOXYS2( state, key4, RT ) */
-    /*      ctp4[index4] = XOR4(state[0], ptp4[index4]); */
-    /*      ctp4[index4+1] = XOR4(state[1], ptp4[index4+1]); */
- 
-    /*      index  += 8; */
-    /*      index4 += 2; */
-    /*      len -= 128; */
-    /*  } */
- 
-    /*  while (len >= 64) { */
-    /*      ctr4   =  ADD4444(ctr4); */
-    /*      RTT[0]  = XOR4(ZZ, ctr4); */
- 
-    /*      for(i=1; i<8; i++){ //UPDATE_TWEAK */ 
-    /*          RTT[i] = PERMUTE_512(RTT[i-1]); */
-    /*      } */
- 
-    /*      state[0] = WW; */
-    /*      DEOXYS( state[0], key4, RTT ) */
-    /*      ctp4[index4] = XOR4(state[0], ptp4[index4]); */
- 
-    /*      index  += 4; */
-    /*      index4 += 1; */
-    /*      len -= 64; */
-    /*  } */
-    /* ctr = _mm512_extracti64x2_epi64(ctr4, 3); */
-    /* while (len > 0) { */
-    /*     ctr = ADD_ONE(ctr); T = XOR(ctr, Z); */
-    /*     S = W; */
-    /*     TAES(S, key, T, t); */
-    /*     ctp[index] = XOR(S, ptp[index]); */
-    /*     index += 1; */
-    /*     len -= 16; */
-    /* } */
 }
