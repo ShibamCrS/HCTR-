@@ -25,6 +25,8 @@
 #define TWO     _mm_set_epi8( 0b01000000, 0,0,0, 0,0,0,0, 0,0,0,0, 0,0,0,0 )
 #define THREE   _mm_set_epi8( 0b01100000, 0,0,0, 0,0,0,0, 0,0,0,0, 0,0,0,0 )
 #define FOUR    _mm_set_epi8( 0b10000000, 0,0,0, 0,0,0,0, 0,0,0,0, 0,0,0,0 )
+
+#define MASKD   _mm_set_epi8( 0x1F, 0xFF,0xFF,0xFF,0xFF,0xFF,0xFF,0xFF,0xFF,0xFF,0xFF,0xFF,0xFF,0xFF,0xFF,0xFF )
 #define TRUNC(a, b) XOR(AND(a, MASKD), b)
 
 #if __GNUC__
@@ -191,5 +193,61 @@ typedef ALIGN(16) __m128i BLOCK;
     dst_array[6] = aesenc(dst_array[6], tmp);   \
     dst_array[7] = aesenc(dst_array[7], tmp);   \
 } while (0)
+
+/*
+    computing:
+    y_new = y_old + x[0] + x[1] + x[2] + x[3]
+*/
+#define accumulate_four_stateful(y, x) { \
+    x[0] = XOR(x[0], x[1]); \
+    x[2] = XOR(x[2], x[3]); \
+    x[3] = XOR(x[0], x[2]); \
+    y    = XOR(y, x[3]); \
+}
+#define accumulate_eight_stateful(y, x) { \
+    x[0] = XOR(x[0], x[1]); \
+    x[2] = XOR(x[2], x[3]); \
+    x[4] = XOR(x[4], x[5]); \
+    x[6] = XOR(x[6], x[7]); \
+    x[0] = XOR(x[0], x[2]); \
+    x[4] = XOR(x[4], x[6]); \
+    x[3] = XOR(x[0], x[4]); \
+    y    = XOR(y, x[3]); \
+}
+
+#define REDUCTION_POLYNOMIAL  _mm_set_epi32(0, 0, 0, 135)
+#define accumulate_four(x, y) { \
+    x[0] = XOR(x[0], x[1]); \
+    x[2] = XOR(x[2], x[3]); \
+    y    = XOR(x[0], x[2]); \
+}
+#define accumulate_eight(x, y) { \
+    x[0] = XOR(x[0], x[1]); \
+    x[2] = XOR(x[2], x[3]); \
+    x[4] = XOR(x[4], x[5]); \
+    x[6] = XOR(x[6], x[7]); \
+    x[0] = XOR(x[0], x[2]); \
+    x[4] = XOR(x[4], x[6]); \
+    y    = XOR(x[0], x[4]); \
+}
+
+#define accumulate_16_stateful(y, x) { \
+    x[0]  = XOR(x[0], x[1]); \
+    x[2]  = XOR(x[2], x[3]); \
+    x[4]  = XOR(x[4], x[5]); \
+    x[6]  = XOR(x[6], x[7]); \
+    x[8]  = XOR(x[8], x[9]); \
+    x[10] = XOR(x[10], x[11]); \
+    x[12] = XOR(x[12], x[13]); \
+    x[14] = XOR(x[14], x[15]); \
+    x[0]  = XOR(x[0], x[2]); \
+    x[4]  = XOR(x[4], x[6]); \
+    x[8]  = XOR(x[8], x[10]); \
+    x[12] = XOR(x[12], x[14]); \
+    x[0]  = XOR(x[0], x[4]); \
+    x[8]  = XOR(x[8], x[12]); \
+    x[0]  = XOR(x[0], x[8]); \
+    y     = XOR(y, x[0]); \
+}
 
 // ---------------------------------------------------------

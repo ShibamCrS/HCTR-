@@ -38,8 +38,6 @@
 #define PERMUTE6(x)        _mm_shuffle_epi8(x, _mm_setr_epi8(14, 7, 12, 5,  2, 11, 0, 9,  6, 15, 4, 13,  10, 3, 8, 1))
 #define PERMUTE7(x)        _mm_shuffle_epi8(x, _mm_setr_epi8(7, 0, 13, 10,  11, 4, 1, 14,  15, 8, 5, 2,  3, 12, 9, 6))
 
-#define MASKD   _mm_set_epi8( 0x1F, 0xFF,0xFF,0xFF,0xFF,0xFF,0xFF,0xFF,0xFF,0xFF,0xFF,0xFF,0xFF,0xFF,0xFF,0xFF )
-
 #define one_be_1           set8r(0, 0, 0, 0,  0, 0, 0, 1,  0, 0, 0, 0,  0, 0, 0, 0)
 #define two_be_1           set8r(0, 0, 0, 0,  0, 0, 0, 2,  0, 0, 0, 0,  0, 0, 0, 0)
 #define three_be_1         set8r(0, 0, 0, 0,  0, 0, 0, 3,  0, 0, 0, 0,  0, 0, 0, 0)

@@ -4,7 +4,7 @@
 #include <stdint.h>
 #include <time.h>
 
-#include "../include/setup.h"
+#include "../include/setup512.h"
 #include "../include/deoxysbc.h"
 #include "../include/init.h"
 
@@ -49,6 +49,12 @@ int prp_init(prp_ctx *ctx, const void *mkey, int key_len, int tk_len){
     T = FOUR;
     TAES(S1, round_keys, T, t);
     DEOXYS_128_256_setup_key((unsigned char *)(&S1),  ctx->round_keys_c);
+
+    for(int i=0; i<=DEOXYS_BC_128_256_NUM_ROUNDS; i++){
+        ctx->round_keys_h_512[i] = _mm512_broadcast_i64x2(ctx->round_keys_h[i]);
+        ctx->round_keys_c_512[i] = _mm512_broadcast_i64x2(ctx->round_keys_c[i]);
+    }
+
     return 1;
 }
 prp_ctx* prp_allocate(void *misc)

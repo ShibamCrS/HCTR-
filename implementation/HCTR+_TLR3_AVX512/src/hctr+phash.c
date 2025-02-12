@@ -4,76 +4,112 @@
 #include <stdint.h>
 #include <time.h>
 
-#include "../include/setup.h"
+#include "../include/setup512.h"
 #include "../include/deoxysbc.h"
 #include "../include/init.h"
 #include "../include/utility.h"
 /* #define PRINT */
 
-BLOCK phash(const BLOCK * restrict data, const BLOCK key[DEOXYS_BC_128_256_NUM_ROUND_KEYS], uint64_t len, BLOCK ctr, BLOCK *X, BLOCK *Y) {
+/* BLOCK phash(const BLOCK * restrict data, const BLOCK4 key4[DEOXYS_BC_128_256_NUM_ROUND_KEYS], const BLOCK key[DEOXYS_BC_128_256_NUM_ROUND_KEYS], uint64_t len, BLOCK ctr, BLOCK *X, BLOCK *Y) { */
+/*     const BLOCK4 * restrict data4 = (BLOCK4 *)data; */
+/*     uint64_t index4, index, i; */
+/*     index = 0; index4 = 0; */
+/*     BLOCK S, T, t; */
+
+/*     BLOCK4 RT[8][2], state[2], ctr4; */
+/*     BLOCK4 RTT[8]; */
+
+/*     /1* BLOCK4 key4[DEOXYS_BC_128_256_NUM_ROUND_KEYS]; *1/ */
+/*     /1* for(int i=0; i<=DEOXYS_BC_128_256_NUM_ROUNDS; i++){ *1/ */
+/*     /1*     key4[i] = _mm512_broadcast_i64x2(key[i]); *1/ */
+/*     /1* } *1/ */
+    
+/*     ctr4 = _mm512_broadcast_i64x2(ctr); */
+/*     ctr4 = ADD0123(ctr4); */
+/*     while (len >= 128) { */
+/*         ctr4   =  ADD4444(ctr4); RT[0][0]  = ctr4; */
+/*         ctr4   =  ADD4444(ctr4); RT[0][1]  = ctr4; */
+        
+/*         for(i=1; i<8; i++){ //UPDATE_TWEAK */ 
+/*             RT[i][0] = PERMUTE_512(RT[i-1][0]); */
+/*             RT[i][1] = PERMUTE_512(RT[i-1][1]); */
+/*         } */
+/*         state[0] = data4[index4]; */
+/*         state[1] = data4[index4+1]; */
+/*         DEOXYS2( state, key4, RT ) */   
+        
+/*         /1* States[0] = _mm512_extracti64x2_epi64(state, 0); *1/ */
+/*         /1* States[1] = _mm512_extracti64x2_epi64(state, 1); *1/ */
+/*         /1* States[2] = _mm512_extracti64x2_epi64(state, 2); *1/ */
+/*         /1* States[3] = _mm512_extracti64x2_epi64(state, 3); *1/ */
+/*         BLOCK *states = (BLOCK *)(&state); */
+
+/*         *Y = gf_2_128_double_eight(*Y, states); */
+/*         accumulate_eight_stateful(*X, states); */
+
+/*         len -= 128; */
+/*         index  += 8; */
+/*         index4 += 2; */
+/*     } */
+/*     while (len >= 64) { */
+/*         ctr4   =  ADD4444(ctr4); RTT[0]  = ctr4; */
+        
+/*         for(i=1; i<8; i++){ //UPDATE_TWEAK */ 
+/*             RTT[i] = PERMUTE_512(RTT[i-1]); */
+/*         } */
+/*         state[0] = data4[index4]; */
+/*         DEOXYS( state[0], key4, RTT ) */   
+        
+/*         /1* States[0] = _mm512_extracti64x2_epi64(state, 0); *1/ */
+/*         /1* States[1] = _mm512_extracti64x2_epi64(state, 1); *1/ */
+/*         /1* States[2] = _mm512_extracti64x2_epi64(state, 2); *1/ */
+/*         /1* States[3] = _mm512_extracti64x2_epi64(state, 3); *1/ */
+/*         BLOCK *states = (BLOCK *)(&state); */
+
+/*         *Y = gf_2_128_double_four(*Y, states); */
+/*         accumulate_four_stateful(*X, states); */
+
+/*         len -= 64; */
+/*         index  += 4; */
+/*         index4 += 1; */
+/*     } */
+/*     ctr = _mm512_extracti64x2_epi64(ctr4, 3); */
+/*     while (len >= 16) { */
+/*         ctr = ADD_ONE(ctr); T = ctr; S = data[index]; */
+/*         TAES(S, key, T, t); */
+/*         *X = XOR(*X, S); */
+/*         *Y = Double(*Y); *Y = XOR(*Y, S); */
+/*         len -= 16; */
+/*         index += 1; */
+/*     } */
+/*     if (len > 0) { //If the last block is not full */
+/*         ctr = ADD_ONE(ctr); T = ctr; //DomainSep */
+/*         S = ZERO(); */
+/*         memcpy(&S, data+index, len); //With 0* padding */
+/*         TAES(S, key, T, t); */
+/*         *X = XOR(*X, S); */
+/*         *Y = Double(*Y); *Y = XOR(*Y, S); */
+/*     } */
+/*     return ctr; */
+/* } */
+
+BLOCK phash(const BLOCK * restrict data, const BLOCK4 key4[DEOXYS_BC_128_256_NUM_ROUND_KEYS], const BLOCK key[DEOXYS_BC_128_256_NUM_ROUND_KEYS], uint64_t len, BLOCK ctr, BLOCK *X, BLOCK *Y) {
     const BLOCK4 * restrict data4 = (BLOCK4 *)data;
     uint64_t index4, index, i;
     index = 0; index4 = 0;
     BLOCK S, T, t;
 
-    BLOCK4 RT[8][2], state[2], ctr4;
-    BLOCK4 RTT[8];
+    BLOCK4 RT[8], state[2], ctr4, tmp;
 
-    BLOCK4 key4[DEOXYS_BC_128_256_NUM_ROUND_KEYS];
-    for(int i=0; i<=DEOXYS_BC_128_256_NUM_ROUNDS; i++){
-        key4[i] = _mm512_broadcast_i64x2(key[i]);
-    }
-    
     ctr4 = _mm512_broadcast_i64x2(ctr);
     ctr4 = ADD0123(ctr4);
-    /* while (len >= 256) { */
-    /*     ctr4   =  ADD4444(ctr4); RT[0][0]  = ctr4; */
-    /*     ctr4   =  ADD4444(ctr4); RT[0][1]  = ctr4; */
-    /*     ctr4   =  ADD4444(ctr4); RT[0][2]  = ctr4; */
-    /*     ctr4   =  ADD4444(ctr4); RT[0][3]  = ctr4; */
-        
-    /*     for(i=1; i<8; i++){ //UPDATE_TWEAK */ 
-    /*         RT[i][0] = PERMUTE_512(RT[i-1][0]); */
-    /*         RT[i][1] = PERMUTE_512(RT[i-1][1]); */
-    /*         RT[i][2] = PERMUTE_512(RT[i-1][2]); */
-    /*         RT[i][3] = PERMUTE_512(RT[i-1][3]); */
-    /*     } */
-    /*     state[0] = data4[index4]; */
-    /*     state[1] = data4[index4+1]; */
-    /*     state[2] = data4[index4+2]; */
-    /*     state[3] = data4[index4+3]; */
-    /*     DEOXYS4( state, key4, RT ) */   
-        
-    /*     /1* States[0] = _mm512_extracti64x2_epi64(state, 0); *1/ */
-    /*     /1* States[1] = _mm512_extracti64x2_epi64(state, 1); *1/ */
-    /*     /1* States[2] = _mm512_extracti64x2_epi64(state, 2); *1/ */
-    /*     /1* States[3] = _mm512_extracti64x2_epi64(state, 3); *1/ */
-    /*     BLOCK *states = (BLOCK *)(&state); */
-
-    /*     *Y = gf_2_128_double_eight(*Y, states); */
-    /*     *Y = gf_2_128_double_eight(*Y, states + 8); */
-    /*     accumulate_16_stateful(*X, states); */
-
-    /*     len -= 256; */
-    /*     index  += 16; */
-    /*     index4 += 4; */
-    /* } */
     while (len >= 128) {
-        ctr4   =  ADD4444(ctr4); RT[0][0]  = ctr4;
-        ctr4   =  ADD4444(ctr4); RT[0][1]  = ctr4;
-        
-        for(i=1; i<8; i++){ //UPDATE_TWEAK 
-            RT[i][0] = PERMUTE_512(RT[i-1][0]);
-            RT[i][1] = PERMUTE_512(RT[i-1][1]);
-        }
+        RT[0] = ctr4;
+        UPDATE_TWEAK_ROUNDS_512_2(RT); // RT[1] .. RT[7] = permuted ctr XOR Z
+        ctr4 = ADD4(ctr4, eight_512);
         state[0] = data4[index4];
         state[1] = data4[index4+1];
-        DEOXYS2( state, key4, RT )   
-        
-        /* States[0] = _mm512_extracti64x2_epi64(state, 0); */
-        /* States[1] = _mm512_extracti64x2_epi64(state, 1); */
-        /* States[2] = _mm512_extracti64x2_epi64(state, 2); */
-        /* States[3] = _mm512_extracti64x2_epi64(state, 3); */
+        DEOXYS_HASH_INPUT_512_2(state, key4, RT, tmp);
         BLOCK *states = (BLOCK *)(&state);
 
         *Y = gf_2_128_double_eight(*Y, states);
@@ -84,18 +120,12 @@ BLOCK phash(const BLOCK * restrict data, const BLOCK key[DEOXYS_BC_128_256_NUM_R
         index4 += 2;
     }
     while (len >= 64) {
-        ctr4   =  ADD4444(ctr4); RTT[0]  = ctr4;
-        
-        for(i=1; i<8; i++){ //UPDATE_TWEAK 
-            RTT[i] = PERMUTE_512(RTT[i-1]);
-        }
+        RT[0] = ctr4;
+        UPDATE_TWEAK_ROUNDS_512(RT); // RT[1] .. RT[7] = permuted ctr XOR Z
+        ctr4 = ADD4(ctr4, four_512);
         state[0] = data4[index4];
-        DEOXYS( state[0], key4, RTT )   
+        DEOXYS_HASH_INPUT_512(state, key4, RT);
         
-        /* States[0] = _mm512_extracti64x2_epi64(state, 0); */
-        /* States[1] = _mm512_extracti64x2_epi64(state, 1); */
-        /* States[2] = _mm512_extracti64x2_epi64(state, 2); */
-        /* States[3] = _mm512_extracti64x2_epi64(state, 3); */
         BLOCK *states = (BLOCK *)(&state);
 
         *Y = gf_2_128_double_four(*Y, states);
@@ -105,7 +135,7 @@ BLOCK phash(const BLOCK * restrict data, const BLOCK key[DEOXYS_BC_128_256_NUM_R
         index  += 4;
         index4 += 1;
     }
-    ctr = _mm512_extracti64x2_epi64(ctr4, 3);
+    ctr = _mm512_extracti64x2_epi64(ctr4, 0);
     while (len >= 16) {
         ctr = ADD_ONE(ctr); T = ctr; S = data[index];
         TAES(S, key, T, t);
@@ -124,7 +154,6 @@ BLOCK phash(const BLOCK * restrict data, const BLOCK key[DEOXYS_BC_128_256_NUM_R
     }
     return ctr;
 }
-
 int prp_encrypt(prp_ctx     * restrict ctx,
                const void *pt,
                uint64_t    pt_len,
@@ -150,12 +179,12 @@ int prp_encrypt(prp_ctx     * restrict ctx,
     Y = ZERO();
     ctr = ZERO();
 /* ---------------------------- Process Tweaks -------------------------*/
-    ctr = phash(tkp, ctx->round_keys_h, tk_len, ctr, &X, &Y);
+    ctr = phash(tkp, ctx->round_keys_h_512, ctx->round_keys_h, tk_len, ctr, &X, &Y);
     BLOCK HT0 = X;
     BLOCK HT1 = Y;
     BLOCK CTR_SAVE = ctr;
 /*-----------------------Process Plaintexts----------------------------*/
-    ctr = phash(ptp+2, ctx->round_keys_h, (pt_len - 2*16), ctr, &X, &Y);
+    ctr = phash(ptp+2, ctx->round_keys_h_512, ctx->round_keys_h, (pt_len - 2*16), ctr, &X, &Y);
     ctr = ADD_ONE(ctr);
 /*--------------------------------------------------------------------*/
     //Handel Length 
@@ -216,13 +245,13 @@ int prp_encrypt(prp_ctx     * restrict ctx,
     ctp[0] = S; ctp[1] = T;
 
 /*------------------------------- The CTR Part -------------------------*/
-    ctr_mode(ptp + 2, ctx->round_keys_c, (pt_len - 2*16), W, Z, ctp+2);
+    ctr_mode(ptp + 2, ctx->round_keys_c_512, ctx->round_keys_c, (pt_len - 2*16), W, Z, ctp+2);
 /* ---------------- The Lower Hash using -------------------------*/
 /*----------------------- Process Plaintexts ----------------------------*/
     ctr = CTR_SAVE; //Use Saved values from previous tweak process
     X = HT0;
     Y = HT1;
-    ctr = phash(ctp+2, ctx->round_keys_h, (pt_len - 2*16), ctr, &X, &Y);
+    ctr = phash(ctp+2, ctx->round_keys_h_512, ctx->round_keys_h, (pt_len - 2*16), ctr, &X, &Y);
 
     //Handel Length 
     ctr = ADD_ONE(ctr);

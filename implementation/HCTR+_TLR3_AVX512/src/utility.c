@@ -3,7 +3,7 @@
 #include <string.h>
 #include <stdint.h>
 
-#include "../include/setup.h"
+#include "../include/setup512.h"
 #include "../include/deoxysbc.h"
 #include "../include/init.h"
 #include "../include/utility.h"
@@ -91,92 +91,109 @@ BLOCK gf_2_128_double_eight(BLOCK Y, BLOCK *S) {
     sum = XOR(sum, S[7]);
     return sum;
 }
-void ctr_mode(const BLOCK *ptp, const BLOCK key[DEOXYS_BC_128_256_NUM_ROUND_KEYS], uint64_t len, BLOCK W, BLOCK Z, BLOCK *ctp) {
+void ctr_mode(const BLOCK *ptp, const BLOCK4 key4[DEOXYS_BC_128_256_NUM_ROUND_KEYS],  const BLOCK key[DEOXYS_BC_128_256_NUM_ROUND_KEYS], uint64_t len, BLOCK W, BLOCK Z, BLOCK *ctp) {
     const BLOCK4 * restrict ptp4 = (BLOCK4 *)ptp;
           BLOCK4 *          ctp4 = (BLOCK4 *)ctp;
 
-    uint64_t index, index4, i;
+    uint64_t index, index4;
     index  = 0;
     index4 = 0;
     BLOCK S, T, t, ctr;
 
-    BLOCK4 state[2], RT[8][2], RTT[8], ctr4;
+    BLOCK4 state[2], RT[8], tmp, ctr4;
+    ctr4 = CTR3210;
 
-    BLOCK4 WW = _mm512_broadcast_i64x2(W);
-    BLOCK4 ZZ = _mm512_broadcast_i64x2(Z);
-
-    BLOCK4 key4[DEOXYS_BC_128_256_NUM_ROUND_KEYS];
-    for(int i=0; i<=DEOXYS_BC_128_256_NUM_ROUNDS; i++){
-        key4[i] = _mm512_broadcast_i64x2(key[i]);
-    }
-
-    ctr4 = CTR0123;
-    /* while (len >= 256) { */
-    /*     ctr4   =  ADD4444(ctr4); RT[0][0]  = XOR4(ZZ, ctr4); */
-    /*     ctr4   =  ADD4444(ctr4); RT[0][1]  = XOR4(ZZ, ctr4); */
-    /*     ctr4   =  ADD4444(ctr4); RT[0][2]  = XOR4(ZZ, ctr4); */
-    /*     ctr4   =  ADD4444(ctr4); RT[0][3]  = XOR4(ZZ, ctr4); */
-
-    /*     for(i=1; i<8; i++){ //UPDATE_TWEAK */ 
-    /*         RT[i][0] = PERMUTE_512(RT[i-1][0]); */
-    /*         RT[i][1] = PERMUTE_512(RT[i-1][1]); */
-    /*         RT[i][2] = PERMUTE_512(RT[i-1][2]); */
-    /*         RT[i][3] = PERMUTE_512(RT[i-1][3]); */
-    /*     } */
-
-    /*     state[0] = state[1] = state[2] = state[3] = WW; */
-    /*     DEOXYS4( state, key4, RT ) */
-    /*     ctp4[index4]   = XOR4(state[0], ptp4[index4]); */
-    /*     ctp4[index4+1] = XOR4(state[1], ptp4[index4+1]); */
-    /*     ctp4[index4+2] = XOR4(state[2], ptp4[index4+2]); */
-    /*     ctp4[index4+3] = XOR4(state[3], ptp4[index4+3]); */
-
-    /*     index  += 16; */
-    /*     index4 += 4; */
-    /*     len -= 256; */
+    /* BLOCK4 key4[DEOXYS_BC_128_256_NUM_ROUND_KEYS]; */
+    /* for(int i=0; i<=DEOXYS_BC_128_256_NUM_ROUNDS; i++){ */
+    /*     key4[i] = _mm512_broadcast_i64x2(key[i]); */
     /* } */
+    BLOCK4 WW = zbroadcast(W);
+    BLOCK4 ZZ = zbroadcast(Z);
+    WW = XOR4(WW, key4[0]);
+
     while (len >= 128) {
-        ctr4   =  ADD4444(ctr4); RT[0][0]  = XOR4(ZZ, ctr4);
-        ctr4   =  ADD4444(ctr4); RT[0][1]  = XOR4(ZZ, ctr4);
+        RT[0] = XOR4(ctr4, ZZ);
+        UPDATE_TWEAK_ROUNDS_512_2(RT); // RT[1] .. RT[7] = permuted ctr XOR Z
+        DEOXYS_FIXED_INPUT_512_2(state, key4, RT, WW, tmp);
 
-        for(i=1; i<8; i++){ //UPDATE_TWEAK 
-            RT[i][0] = PERMUTE_512(RT[i-1][0]);
-            RT[i][1] = PERMUTE_512(RT[i-1][1]);
-        }
+        ctp4[index4    ] = XOR4(state[0], ptp4[index4    ]);
+        ctp4[index4 + 1] = XOR4(state[1], ptp4[index4 + 1]);
 
-        state[0] = state[1] = WW;
-        DEOXYS2( state, key4, RT )
-        ctp4[index4] = XOR4(state[0], ptp4[index4]);
-        ctp4[index4+1] = XOR4(state[1], ptp4[index4+1]);
+        ctr4 = ADD4(ctr4, eight_512);
 
-        index  += 8;
         index4 += 2;
+        index  += 8;
         len -= 128;
     }
 
     while (len >= 64) {
-        ctr4   =  ADD4444(ctr4);
-        RTT[0]  = XOR4(ZZ, ctr4);
+        RT[0] = XOR4(ctr4, ZZ);
+        UPDATE_TWEAK_ROUNDS_512(RT);
+        DEOXYS_FIXED_INPUT_512(state, key4, RT, WW);
 
-        for(i=1; i<8; i++){ //UPDATE_TWEAK 
-            RTT[i] = PERMUTE_512(RTT[i-1]);
-        }
+        ctp4[index4    ] = XOR4(state[0], ptp4[index4    ]);
 
-        state[0] = WW;
-        DEOXYS( state[0], key4, RTT )
-        ctp4[index4] = XOR4(state[0], ptp4[index4]);
+        ctr4 = ADD4(ctr4, four_512);
 
+        index4++;
         index  += 4;
-        index4 += 1;
         len -= 64;
     }
-    ctr = _mm512_extracti64x2_epi64(ctr4, 3);
+    ctr = _mm512_extracti64x2_epi64(ctr4, 0);
     while (len > 0) {
-        ctr = ADD_ONE(ctr); T = XOR(ctr, Z);
+        T = XOR(ctr, Z);
         S = W;
         TAES(S, key, T, t);
         ctp[index] = XOR(S, ptp[index]);
+        ctr = ADD_ONE(ctr); 
         index += 1;
         len -= 16;
     }
+
+    /* BLOCK4 state[2], RT[8][2], RTT[8], ctr4; */
+    /* ctr4 = CTR0123; */
+    /* while (len >= 128) { */
+    /*      ctr4   =  ADD4444(ctr4); RT[0][0]  = XOR4(ZZ, ctr4); */
+    /*      ctr4   =  ADD4444(ctr4); RT[0][1]  = XOR4(ZZ, ctr4); */
+ 
+    /*      for(i=1; i<8; i++){ //UPDATE_TWEAK */ 
+    /*          RT[i][0] = PERMUTE_512(RT[i-1][0]); */
+    /*          RT[i][1] = PERMUTE_512(RT[i-1][1]); */
+    /*      } */
+ 
+    /*      state[0] = state[1] = WW; */
+    /*      DEOXYS2( state, key4, RT ) */
+    /*      ctp4[index4] = XOR4(state[0], ptp4[index4]); */
+    /*      ctp4[index4+1] = XOR4(state[1], ptp4[index4+1]); */
+ 
+    /*      index  += 8; */
+    /*      index4 += 2; */
+    /*      len -= 128; */
+    /*  } */
+ 
+    /*  while (len >= 64) { */
+    /*      ctr4   =  ADD4444(ctr4); */
+    /*      RTT[0]  = XOR4(ZZ, ctr4); */
+ 
+    /*      for(i=1; i<8; i++){ //UPDATE_TWEAK */ 
+    /*          RTT[i] = PERMUTE_512(RTT[i-1]); */
+    /*      } */
+ 
+    /*      state[0] = WW; */
+    /*      DEOXYS( state[0], key4, RTT ) */
+    /*      ctp4[index4] = XOR4(state[0], ptp4[index4]); */
+ 
+    /*      index  += 4; */
+    /*      index4 += 1; */
+    /*      len -= 64; */
+    /*  } */
+    /* ctr = _mm512_extracti64x2_epi64(ctr4, 3); */
+    /* while (len > 0) { */
+    /*     ctr = ADD_ONE(ctr); T = XOR(ctr, Z); */
+    /*     S = W; */
+    /*     TAES(S, key, T, t); */
+    /*     ctp[index] = XOR(S, ptp[index]); */
+    /*     index += 1; */
+    /*     len -= 16; */
+    /* } */
 }

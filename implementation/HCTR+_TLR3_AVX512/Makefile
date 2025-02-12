@@ -18,8 +18,8 @@ hctr+zhash_benchmark: ./src/hctr+zhash.c hctr+benchmark.c ./src/deoxysbc.c ./src
 	$(CC) $(FLAGS) $^ -o $@
 
 clean:
-	rm -f deoxys hctr+phash_validation hctr+zhash_validation hctr+phash_benchmark hctr+zhash_benchmark
+	rm -f hctr+phash_validation hctr+zhash_validation hctr+phash_benchmark hctr+zhash_benchmark
 
 clean-all:
-	rm -f deoxys hctr+phash_validation hctr+zhash_validation hctr+phash_benchmark hctr+zhash_benchmark
+	rm -f hctr+phash_validation hctr+zhash_validation hctr+phash_benchmark hctr+zhash_benchmark
 	rm -rf timedata

@@ -4,7 +4,7 @@
 #include <stdint.h>
 #include <time.h>
 
-#include "./include/setup.h"
+#include "./include/setup512.h"
 #include "./include/init.h"
 #include "./include/utility.h"
 

@@ -6,7 +6,7 @@
 
 #define DATAPATH   "./timedata/%s.txt"
 
-#include "./include/setup.h"
+#include "./include/setup512.h"
 #include "./include/init.h"
 #include "./include/timedefs.h"
 #include "./include/utility.h"
@@ -27,7 +27,7 @@ void printkeys(prp_ctx     * restrict ctx) {
 
 #define VAL_LEN  65536
 /* #define VAL_LEN  256 */
-#define TWK_LEN  512
+#define TWK_LEN  128
 void simple_test() {
     ALIGN(16) unsigned char key[16] = {0x2B,0x7E,0x15,0x16,0x28,0xAE,0xD2,0xA6,0xAB,0xF7,0x15,0x88,0x09,0xCF,0x4F,0x3C};
 
