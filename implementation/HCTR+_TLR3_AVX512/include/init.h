@@ -24,16 +24,10 @@ int prp_init(prp_ctx     *ctx,
             const void *key,
             int         key_len,
             int         tweak_len);
-int prp_encrypt(prp_ctx     *ctx,
+void prp_encrypt(prp_ctx     *ctx,
             const void *pt,
             uint64_t    pt_len,
             const void *tk,
             uint64_t    tk_len,
             void       *ct, 
             int encrypt); //If possible to implement encrypt & decrypt in the same funtion with samll tweaks
-int prp_decrypt(prp_ctx    *ctx,
-            const void *ct,
-            uint64_t        ct_len,
-            const void *tk,
-            uint64_t    tk_len,
-            void       *pt);

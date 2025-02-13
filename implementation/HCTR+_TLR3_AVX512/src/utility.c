@@ -91,6 +91,55 @@ BLOCK gf_2_128_double_eight(BLOCK Y, BLOCK *S) {
     sum = XOR(sum, S[7]);
     return sum;
 }
+BLOCK gf_2_128_double_16(BLOCK Y, BLOCK *S) {
+    BLOCK tmp[16];
+    tmp[0] = _mm_srli_epi64(Y   , 48);
+    tmp[1] = _mm_srli_epi64(S[0], 49);
+    tmp[2] = _mm_srli_epi64(S[1], 50);
+    tmp[3] = _mm_srli_epi64(S[2], 51);
+    tmp[4] = _mm_srli_epi64(S[3], 52);
+    tmp[5] = _mm_srli_epi64(S[4], 53);
+    tmp[6] = _mm_srli_epi64(S[5], 54);
+    tmp[7] = _mm_srli_epi64(S[6], 55);
+    tmp[8] = _mm_srli_epi64(S[7], 56);
+    tmp[9] = _mm_srli_epi64(S[8], 57);
+    tmp[10] = _mm_srli_epi64(S[9], 58);
+    tmp[11] = _mm_srli_epi64(S[10], 59);
+    tmp[12] = _mm_srli_epi64(S[11], 60);
+    tmp[13] = _mm_srli_epi64(S[12], 61);
+    tmp[14] = _mm_srli_epi64(S[13], 62);
+    tmp[15] = _mm_srli_epi64(S[14], 63);
+
+    BLOCK sum;
+    accumulate_16(tmp, sum);
+
+    BLOCK mod =  _mm_clmulepi64_si128(sum, REDUCTION_POLYNOMIAL, 0x01);
+
+    BLOCK sum_low = _mm_bslli_si128(sum, 8);
+
+    tmp[0] = _mm_slli_epi64(Y,    16);
+    tmp[1] = _mm_slli_epi64(S[0], 15);
+    tmp[2] = _mm_slli_epi64(S[1], 14);
+    tmp[3] = _mm_slli_epi64(S[2], 13);
+    tmp[4] = _mm_slli_epi64(S[3], 12);
+    tmp[5] = _mm_slli_epi64(S[4], 11);
+    tmp[6] = _mm_slli_epi64(S[5], 10);
+    tmp[7] = _mm_slli_epi64(S[6], 9);
+    tmp[8] = _mm_slli_epi64(S[7], 8);
+    tmp[9] = _mm_slli_epi64(S[8], 7);
+    tmp[10] = _mm_slli_epi64(S[9], 6);
+    tmp[11] = _mm_slli_epi64(S[10], 5);
+    tmp[12] = _mm_slli_epi64(S[11], 4);
+    tmp[13] = _mm_slli_epi64(S[12], 3);
+    tmp[14] = _mm_slli_epi64(S[13], 2);
+    tmp[15] = _mm_slli_epi64(S[14], 1);
+
+    accumulate_16(tmp, sum);
+    sum = XOR(sum, sum_low);
+    sum = XOR(sum, mod);
+    sum = XOR(sum, S[15]);
+    return sum;
+}
 void ctr_mode(const BLOCK *ptp, const BLOCK4 key4[DEOXYS_BC_128_256_NUM_ROUND_KEYS],  const BLOCK key[DEOXYS_BC_128_256_NUM_ROUND_KEYS], uint64_t len, BLOCK W, BLOCK Z, BLOCK *ctp) {
     const BLOCK4 * restrict ptp4 = (BLOCK4 *)ptp;
           BLOCK4 *          ctp4 = (BLOCK4 *)ctp;

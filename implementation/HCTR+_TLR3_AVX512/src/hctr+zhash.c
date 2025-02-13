@@ -33,9 +33,9 @@ void zhash(const BLOCK * data, const BLOCK4 key4[DEOXYS_BC_128_256_NUM_ROUND_KEY
     index = 0; index4 = 0;
 
     BLOCK T, t, S, Lll[4], Lrr[4];
-    BLOCK4 *Ll4, *Lr4, A, B[2];
+    BLOCK4 *Ll4, *Lr4, A[4], B[4];
 
-    BLOCK4 SL4[2], SR4[2][8];
+    BLOCK4 SL4[4], SR4[4][8];
 
     Lll[0] = *Ll;             
     Lll[1] = Double(Lll[0]);             
@@ -50,22 +50,81 @@ void zhash(const BLOCK * data, const BLOCK4 key4[DEOXYS_BC_128_256_NUM_ROUND_KEY
     Lr4 = (BLOCK4 *)Lrr;
     
     BLOCK *SL = (BLOCK *)(&SL4);
-
-    while (len >= 256) {
-        A    = _mm512_shuffle_i64x2(data4[index4], data4[index4 + 1], _MM_SHUFFLE(2, 0, 2, 0));
+    
+    while (len >= 512) {
+        A[0] = _mm512_shuffle_i64x2(data4[index4], data4[index4 + 1], _MM_SHUFFLE(2, 0, 2, 0));
         B[0] = _mm512_shuffle_i64x2(data4[index4], data4[index4 + 1], _MM_SHUFFLE(3, 1, 3, 1));
-        SL4[0]    = XOR4(Ll4[0], A);
+        A[1] = _mm512_shuffle_i64x2(data4[index4+2], data4[index4+3], _MM_SHUFFLE(2, 0, 2, 0));
+        B[1] = _mm512_shuffle_i64x2(data4[index4+2], data4[index4+3], _MM_SHUFFLE(3, 1, 3, 1));
+        A[2] = _mm512_shuffle_i64x2(data4[index4+4], data4[index4 + 5], _MM_SHUFFLE(2, 0, 2, 0));
+        B[2] = _mm512_shuffle_i64x2(data4[index4+4], data4[index4 + 5], _MM_SHUFFLE(3, 1, 3, 1));
+        A[3] = _mm512_shuffle_i64x2(data4[index4+6], data4[index4+7], _MM_SHUFFLE(2, 0, 2, 0));
+        B[3] = _mm512_shuffle_i64x2(data4[index4+6], data4[index4+7], _MM_SHUFFLE(3, 1, 3, 1));
+
+        SL4[0]    = XOR4(Ll4[0], A[0]);
         SR4[0][0] = XOR4(Lr4[0], B[0]);
         Ll4[0] = mult4by4(Ll4[0]);
         Lr4[0] = mult4by4(Lr4[0]);
        
-        A    = _mm512_shuffle_i64x2(data4[index4+2], data4[index4+3], _MM_SHUFFLE(2, 0, 2, 0));
-        B[1] = _mm512_shuffle_i64x2(data4[index4+2], data4[index4+3], _MM_SHUFFLE(3, 1, 3, 1));
-        SL4[1]    = XOR4(Ll4[0], A);
+        SL4[1]    = XOR4(Ll4[0], A[1]);
         SR4[1][0] = XOR4(Lr4[0], B[1]);
         Ll4[0] = mult4by4(Ll4[0]);
         Lr4[0] = mult4by4(Lr4[0]);
 
+        SL4[2]    = XOR4(Ll4[0], A[2]);
+        SR4[2][0] = XOR4(Lr4[0], B[2]);
+        Ll4[0] = mult4by4(Ll4[0]);
+        Lr4[0] = mult4by4(Lr4[0]);
+        
+        SL4[3]    = XOR4(Ll4[0], A[3]);
+        SR4[3][0] = XOR4(Lr4[0], B[3]);
+        Ll4[0] = mult4by4(Ll4[0]);
+        Lr4[0] = mult4by4(Lr4[0]);
+
+        /* TRUNC4_four(SR4[0][0], SR4[1][0], SR4[2][0], SR4[3][0]); */
+        SR4[0][0] = TRUNC4(SR4[0][0], ONE4);
+        for(i=1; i<8; i++){ //UPDATE_TWEAK
+            SR4[0][i] = PERMUTE_512(SR4[0][i-1]);
+        }
+        SR4[1][0] = TRUNC4(SR4[1][0], ONE4);
+        for(i=1; i<8; i++){ //UPDATE_TWEAK
+            SR4[1][i] = PERMUTE_512(SR4[1][i-1]);
+        }
+        SR4[2][0] = TRUNC4(SR4[2][0], ONE4);
+        for(i=1; i<8; i++){ //UPDATE_TWEAK
+            SR4[2][i] = PERMUTE_512(SR4[2][i-1]);
+        }
+        SR4[3][0] = TRUNC4(SR4[3][0], ONE4);
+        for(i=1; i<8; i++){ //UPDATE_TWEAK
+            SR4[3][i] = PERMUTE_512(SR4[3][i-1]);
+        }
+        DEOXYS4( SL4, key4, SR4 )
+        *U = gf_2_128_double_16(*U, SL);
+        XOR4_four(SL4, B);
+
+        accumulate_16_stateful(*V, SL);
+
+        index  += 32;
+        index4 += 8;
+        len -= 512;
+    }
+    while (len >= 256) {
+        A[0] = _mm512_shuffle_i64x2(data4[index4], data4[index4 + 1], _MM_SHUFFLE(2, 0, 2, 0));
+        B[0] = _mm512_shuffle_i64x2(data4[index4], data4[index4 + 1], _MM_SHUFFLE(3, 1, 3, 1));
+        A[1] = _mm512_shuffle_i64x2(data4[index4+2], data4[index4+3], _MM_SHUFFLE(2, 0, 2, 0));
+        B[1] = _mm512_shuffle_i64x2(data4[index4+2], data4[index4+3], _MM_SHUFFLE(3, 1, 3, 1));
+        
+        SL4[0]    = XOR4(Ll4[0], A[0]);
+        SR4[0][0] = XOR4(Lr4[0], B[0]);
+        Ll4[0] = mult4by4(Ll4[0]);
+        Lr4[0] = mult4by4(Lr4[0]);
+       
+        SL4[1]    = XOR4(Ll4[0], A[1]);
+        SR4[1][0] = XOR4(Lr4[0], B[1]);
+        Ll4[0] = mult4by4(Ll4[0]);
+        Lr4[0] = mult4by4(Lr4[0]);
+
+        /* TRUNC4_two(SR4[0][0], SR4[1][0]); */
         SR4[0][0] = TRUNC4(SR4[0][0], ONE4);
         for(i=1; i<8; i++){ //UPDATE_TWEAK
             SR4[0][i] = PERMUTE_512(SR4[0][i-1]);
@@ -75,12 +134,8 @@ void zhash(const BLOCK * data, const BLOCK4 key4[DEOXYS_BC_128_256_NUM_ROUND_KEY
             SR4[1][i] = PERMUTE_512(SR4[1][i-1]);
         }
         DEOXYS2( SL4, key4, SR4 )
-
         *U = gf_2_128_double_eight(*U, SL);
-
-        SL4[0] = XOR4(SL4[0], B[0]);
-        SL4[1] = XOR4(SL4[1], B[1]);
-
+        XOR4_two(SL4, B);
         accumulate_eight_stateful(*V, SL);
 
         index  += 16;
@@ -89,9 +144,9 @@ void zhash(const BLOCK * data, const BLOCK4 key4[DEOXYS_BC_128_256_NUM_ROUND_KEY
     }
 
     while (len >= 128) {
-        A    = _mm512_shuffle_i64x2(data4[index4], data4[index4 + 1], _MM_SHUFFLE(2, 0, 2, 0));
+        A[0] = _mm512_shuffle_i64x2(data4[index4], data4[index4 + 1], _MM_SHUFFLE(2, 0, 2, 0));
         B[0] = _mm512_shuffle_i64x2(data4[index4], data4[index4 + 1], _MM_SHUFFLE(3, 1, 3, 1));
-        SL4[0]    = XOR4(Ll4[0], A);
+        SL4[0]    = XOR4(Ll4[0], A[0]);
         SR4[0][0] = XOR4(Lr4[0], B[0]);
         Ll4[0] = mult4by4(Ll4[0]);
         Lr4[0] = mult4by4(Lr4[0]);
@@ -101,11 +156,8 @@ void zhash(const BLOCK * data, const BLOCK4 key4[DEOXYS_BC_128_256_NUM_ROUND_KEY
             SR4[0][i] = PERMUTE_512(SR4[0][i-1]);
         }
         DEOXYS( SL4[0], key4, SR4[0] )
-
         *U = gf_2_128_double_four(*U, SL);
-        
         SL4[0] = XOR4(SL4[0], B[0]);
-
         accumulate_four_stateful(*V, SL);
 
         index  += 8;
@@ -138,7 +190,7 @@ void zhash(const BLOCK * data, const BLOCK4 key4[DEOXYS_BC_128_256_NUM_ROUND_KEY
     }
 }
 
-int prp_encrypt(prp_ctx     * restrict ctx,
+void prp_encrypt(prp_ctx     * restrict ctx,
                const void *pt,
                uint64_t    pt_len,
                const void *tk,
@@ -238,6 +290,4 @@ int prp_encrypt(prp_ctx     * restrict ctx,
 
     ctp[0] = XOR(ctp[0], Z);
     ctp[1] = XOR(ctp[1], W);
-
-    return (int) pt_len;
 }

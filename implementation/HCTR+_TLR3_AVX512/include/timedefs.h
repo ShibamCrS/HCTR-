@@ -105,86 +105,6 @@ void getCompilerConfig(char *outp) {
     outp += sprintf(outp, "SPARC32");
     #endif
 }
-int getTime(char *infoString, char *filename) {
-    /* Allocate locals */
-    ALIGN(16) char pt[65536] = {0};
-    ALIGN(16) unsigned char tk[512];
-    ALIGN(16) unsigned char key[] = "abcdefghijklmnop";
-    char outbuf[MAX_ITER*15+1024];
-    
-    int iter_list[2048]; /* Populate w/ test lengths, -1 terminated */
-    prp_ctx *ctx = prp_allocate(NULL);
-    char *outp = outbuf;
-    int i, j, len, tk_len = 512;
-    double Hz;
-    double ipi=0, tmpd;
-    
-    /* populate iter_list, terminate list with negative number */
-    for (i=0; i<MAX_ITER; ++i)
-        iter_list[i] = i+1;
-    if (MAX_ITER < 44) iter_list[i++] = 44;
-    if (MAX_ITER < 552) iter_list[i++] = 552;
-    if (MAX_ITER < 576) iter_list[i++] = 576;
-    if (MAX_ITER < 1500) iter_list[i++] = 1500;
-    if (MAX_ITER < 2048) iter_list[i++] = 2048;
-    if (MAX_ITER < 4096) iter_list[i++] = 4096;
-    if (MAX_ITER < 8192) iter_list[i++] = 8192;
-    if (MAX_ITER < 16384) iter_list[i++] = 16384;
-    if (MAX_ITER < 32768) iter_list[i++] = 32768;
-    if (MAX_ITER < 65536) iter_list[i++] = 65536;
-    iter_list[i] = -1;
-    
-    FILE *fp = fopen(filename, "w");
-    char str_time[25];
-    time_t tmp_time = time(NULL);
-    struct tm *tp = localtime(&tmp_time);
-    strftime(str_time, sizeof(str_time), "%F %R", tp);
-    
-    outp += sprintf(outp, "%s ", infoString);
-    /* getCompilerConfig(outp); */
-    outp += sprintf(outp, " : Run Date/Time %s\n\n",str_time);
-    
-    int sum = 0, suc = 0;
-    //get AE initialization Time
-    outp += sprintf(outp, "Context Size: %d bytes\n", prp_ctx_sizeof());
-    DO(prp_init(ctx, key, 16, 16));
-    num_values = 0;
-    DO(suc = prp_init(ctx, key, 16, 16);key[5] = ((unsigned char *)(&ctx->round_keys_1[    14]))[0]);
-    printf("Key setup: %6.2f cycles\n\n", ((median_get())/(double)N));
-    outp += sprintf(outp, "Key setup: %6.2f cycles\n\n", ((median_get())/(double)N));
-
-     /*
-     * Get times over different lengths
-     */
-    i=127;
-    len = iter_list[i];
-    while (len >= 0) {
-        tk[tk_len - 2] = 0;
-        DO(prp_encrypt(ctx, pt, len, tk, tk_len, pt, 1); tk[tk_len - 2] += 1);
-        tmpd = ((median_get())/((len+tk_len)*(double)N));
-        outp += sprintf(outp, "%5d  %6.2f\n", len, tmpd);
-        if (len==44) {
-            ipi += 0.05 * tmpd;
-        } else if (len==552) {
-            ipi += 0.15 * tmpd;
-        } else if (len==576) {
-            ipi += 0.2 * tmpd;
-        } else if (len==1500) {
-            ipi += 0.6 * tmpd;
-        }
-
-        ++i;
-        len = iter_list[i];
-    }
-    outp += sprintf(outp, "ipi %.2f\n", ipi);
-    if (fp) {
-        fprintf(fp, "%s", outbuf);
-        fclose(fp);
-    } else
-        fprintf(stdout, "%s", outbuf);
-    prp_free(ctx);
-    return ((pt[0]==12) && (pt[10]==34) && (pt[20]==56) && (pt[30]==78));
-}
 
 #define PT_LEN 65536
 #define TK_LEN 65536
@@ -198,14 +118,14 @@ int getTimeMy(char *infoString, char *filename) {
     
     prp_ctx *ctx = prp_allocate(NULL);
     char *outp = outbuf;
-    int i, j, len, twk_len;
+    int i, j, k, len, twk_len;
     double Hz;
     double ipi=0, tmpd;
     
     /* populate iter_list, terminate list with negative number */
     int msg_len_list[EXP] = {1024, 2048, 4096, 8192, 16384, 32768, 65536, -1}; 
-    /* int twk_len_list[EXP] = {0, 16, 32, 64, 128, 256, 512, -1}; */ 
-    int twk_len_list[EXP] = {16, -1}; 
+    int twk_len_list[EXP] = {0, 16, 256, 512, 1024, -1}; 
+    /* int twk_len_list[EXP] = {16, -1}; */ 
 
     FILE *fp = fopen(filename, "w");
     char str_time[25];
@@ -237,9 +157,10 @@ int getTimeMy(char *infoString, char *filename) {
         j=0;
         twk_len = twk_len_list[j];
         while(twk_len >= 0) {
-            tk[twk_len - 2] = 0;
-            /* DO(prp_encrypt(ctx, pt, len, tk, twk_len, pt, 1); tk[twk_len - 2] += 1); */
-            DO(prp_encrypt(ctx, pt, len, tk, twk_len, pt, 1););
+            for (k = 0; k < len; k++) pt[k] = rand();
+            for (k = 0; k < twk_len; k++) tk[k] = rand();
+            DO(prp_encrypt(ctx, pt, len, tk, twk_len, pt, 1); tk[twk_len - 2] += 1);
+            /* DO(prp_encrypt(ctx, pt, len, tk, twk_len, pt, 1);); */
             tmpd = ((median_get())/((double)(len+twk_len)*(double)N));
             outp += sprintf(outp, "%5d %5d  %6.2f\n", len, twk_len, tmpd);
             ++j;

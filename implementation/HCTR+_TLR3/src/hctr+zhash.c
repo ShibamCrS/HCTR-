@@ -54,7 +54,6 @@ void zhash(const BLOCK * data, const BLOCK key[DEOXYS_BC_128_256_NUM_ROUND_KEYS]
         index += 8;
         len  -= 128;
     }
-
     while (len >= 32) {
         S = XOR(*Ll, data[index]);      *Ll = Double(*Ll); 
         T = XOR(*Lr, data[index +  1]); *Lr = Double(*Lr); 

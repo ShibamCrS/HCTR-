@@ -71,7 +71,7 @@ BLOCK phash(const BLOCK * restrict data, const BLOCK4 key4[DEOXYS_BC_128_256_NUM
     }
     return ctr;
 }
-int prp_encrypt(prp_ctx     * restrict ctx,
+void prp_encrypt(prp_ctx     * restrict ctx,
                const void *pt,
                uint64_t    pt_len,
                const void *tk,
@@ -186,7 +186,5 @@ int prp_encrypt(prp_ctx     * restrict ctx,
 
     ctp[0] = XOR(ctp[0], Z);
     ctp[1] = XOR(ctp[1], W);
-
-    return (int) pt_len;
 }
 

@@ -44,15 +44,15 @@
 /*---------------From SUPERCOP DEOXYSBC---------------------------------------*/
 #define ONE_XOR4( s, subkey, tweak )\
     s[0] = _mm512_xor_si512(s[0], _mm512_xor_si512(subkey, tweak[0][0]));\
-    s[1] = _mm512_xor_si512(s[1], _mm512_xor_si512(subkey, tweak[0][1]));\
-    s[2] = _mm512_xor_si512(s[2], _mm512_xor_si512(subkey, tweak[0][2]));\
-    s[3] = _mm512_xor_si512(s[3], _mm512_xor_si512(subkey, tweak[0][3]));\
+    s[1] = _mm512_xor_si512(s[1], _mm512_xor_si512(subkey, tweak[1][0]));\
+    s[2] = _mm512_xor_si512(s[2], _mm512_xor_si512(subkey, tweak[2][0]));\
+    s[3] = _mm512_xor_si512(s[3], _mm512_xor_si512(subkey, tweak[3][0]));\
 ;
 #define ONE_ROUND4( s, subkey, tweak , Round )\
-    s[0] = _mm512_aesenc_epi128(s[0], _mm512_xor_si512(subkey, tweak[Round][0]));\
-    s[1] = _mm512_aesenc_epi128(s[1], _mm512_xor_si512(subkey, tweak[Round][1]));\
-    s[2] = _mm512_aesenc_epi128(s[2], _mm512_xor_si512(subkey, tweak[Round][2]));\
-    s[3] = _mm512_aesenc_epi128(s[3], _mm512_xor_si512(subkey, tweak[Round][3]));\
+    s[0] = _mm512_aesenc_epi128(s[0], _mm512_xor_si512(subkey, tweak[0][Round]));\
+    s[1] = _mm512_aesenc_epi128(s[1], _mm512_xor_si512(subkey, tweak[1][Round]));\
+    s[2] = _mm512_aesenc_epi128(s[2], _mm512_xor_si512(subkey, tweak[2][Round]));\
+    s[3] = _mm512_aesenc_epi128(s[3], _mm512_xor_si512(subkey, tweak[3][Round]));\
 ;
 #define DEOXYS4( states, subkeys, tweak ) {\
   ONE_XOR4  ( states , subkeys[ 0] , tweak      );\
