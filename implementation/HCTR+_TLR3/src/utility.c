@@ -229,3 +229,86 @@ void ctr_mode(const BLOCK *ptp, const BLOCK key[DEOXYS_BC_128_256_NUM_ROUND_KEYS
     /* } */
 
 }
+void xorpp_mode(const BLOCK *ptp, const BLOCK key[DEOXYS_BC_128_256_NUM_ROUND_KEYS], uint64_t len, BLOCK W, BLOCK Z, BLOCK *ctp) {
+    
+    BLOCK RT[8], RTK[14];
+    BLOCK States[8], W_prime;
+    BLOCK M, tmp;
+    BLOCK ctr = one_be;
+    uint64_t index = 0, i ;
+
+    //Prepare Round TWEAKEY
+    RT[0] = Z;
+    for(i=1; i<8; i++){
+        RT[i] = PERMUTE(RT[i-1]);
+    }
+    //we can precompute the input to the first round after ATK operation for one input
+    //For other inputs, just need to XOR the counter
+    W_prime = XOR(W, XOR(RT[0], key[0]));
+
+    for(i=1; i<8; i++){
+        RTK[i-1] = XOR(RT[i], key[i]);
+    }
+    for(i=0; i<7; i++){
+        RTK[7 + i] = XOR(RT[i], key[8 + i]);
+    }
+    
+    //Prepare MASK to add at the output of each TBC
+    M = W_prime;
+    TAES_FIXED_TWEAKEY(M, RTK);
+
+
+    while (len >= 128) {
+        States[0] = XOR(W_prime, ctr); ctr = ADD_ONE(ctr); 
+        States[1] = XOR(W_prime, ctr); ctr = ADD_ONE(ctr); 
+        States[2] = XOR(W_prime, ctr); ctr = ADD_ONE(ctr); 
+        States[3] = XOR(W_prime, ctr); ctr = ADD_ONE(ctr); 
+        States[4] = XOR(W_prime, ctr); ctr = ADD_ONE(ctr); 
+        States[5] = XOR(W_prime, ctr); ctr = ADD_ONE(ctr); 
+        States[6] = XOR(W_prime, ctr); ctr = ADD_ONE(ctr); 
+        States[7] = XOR(W_prime, ctr); ctr = ADD_ONE(ctr); 
+
+        DEOXYS8_FIXED_TWEAKEY(States, RTK);
+        xor_eight(States, States, M);
+
+        ctp[index    ] = XOR(States[0], ptp[index    ]);
+        ctp[index + 1] = XOR(States[1], ptp[index + 1]);
+        ctp[index + 2] = XOR(States[2], ptp[index + 2]);
+        ctp[index + 3] = XOR(States[3], ptp[index + 3]);
+        ctp[index + 4] = XOR(States[4], ptp[index + 4]);
+        ctp[index + 5] = XOR(States[5], ptp[index + 5]);
+        ctp[index + 6] = XOR(States[6], ptp[index + 6]);
+        ctp[index + 7] = XOR(States[7], ptp[index + 7]);
+
+        index += 8;
+        len -= 128;
+    }
+    while (len >= 64) {
+        States[0] = XOR(W_prime, ctr); ctr = ADD_ONE(ctr); 
+        States[1] = XOR(W_prime, ctr); ctr = ADD_ONE(ctr); 
+        States[2] = XOR(W_prime, ctr); ctr = ADD_ONE(ctr); 
+        States[3] = XOR(W_prime, ctr); ctr = ADD_ONE(ctr); 
+
+        DEOXYS4_FIXED_TWEAKEY(States, RTK);
+        xor_four(States, States, M);
+
+        ctp[index    ] = XOR(States[0], ptp[index    ]);
+        ctp[index + 1] = XOR(States[1], ptp[index + 1]);
+        ctp[index + 2] = XOR(States[2], ptp[index + 2]);
+        ctp[index + 3] = XOR(States[3], ptp[index + 3]);
+
+        index += 4;
+        len -= 64;
+    }
+    BLOCK S;
+    while (len > 0) {
+        S = XOR(W_prime, ctr);
+        ctr = ADD_ONE(ctr); 
+        TAES_FIXED_TWEAKEY(S, RTK);
+        S = XOR(S, M);
+        ctp[index] = XOR(S, ptp[index]);
+        index += 1;
+        len -= 16;
+    }
+
+}

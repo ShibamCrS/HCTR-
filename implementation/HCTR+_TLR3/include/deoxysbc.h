@@ -193,26 +193,6 @@
 
 // ---------------------------------------------------------
 
-#define DEOXYS8( states, subkeys, tweak ) {\
-  ONE_XOR8  ( states , subkeys[ 0] , tweak      );\
-  ONE_ROUND8( states , subkeys[ 1] , tweak ,  1 );\
-  ONE_ROUND8( states , subkeys[ 2] , tweak ,  2 );\
-  ONE_ROUND8( states , subkeys[ 3] , tweak ,  3 );\
-  ONE_ROUND8( states , subkeys[ 4] , tweak ,  4 );\
-  ONE_ROUND8( states , subkeys[ 5] , tweak ,  5 );\
-  ONE_ROUND8( states , subkeys[ 6] , tweak ,  6 );\
-  ONE_ROUND8( states , subkeys[ 7] , tweak ,  7 );\
-  ONE_ROUND8( states , subkeys[ 8] , tweak ,  0 );\
-  ONE_ROUND8( states , subkeys[ 9] , tweak ,  1 );\
-  ONE_ROUND8( states , subkeys[10] , tweak ,  2 );\
-  ONE_ROUND8( states , subkeys[11] , tweak ,  3 );\
-  ONE_ROUND8( states , subkeys[12] , tweak ,  4 );\
-  ONE_ROUND8( states , subkeys[13] , tweak ,  5 );\
-  ONE_ROUND8( states , subkeys[14] , tweak ,  6 );\
-}
-
-// ---------------------------------------------------------
-
 #define UPDATE_TWEAK4(tweak, I){ \
     tweak[I][0] = PERMUTE(tweak[I-1][0]);\
     tweak[I][1] = PERMUTE(tweak[I-1][1]);\
@@ -357,18 +337,64 @@
 
 // ---------------------------------------------------------
 
-// #define ONE_XOR4_FIXED_INPUT(s, subkey, tweak, input){\
-//     s[0] = XOR(input, subkey); \
-//     s[4] = XOR(input, subkey); \
-//     s[1] = XOR(s[0], tweak[1]); \
-//     s[2] = XOR(s[0], tweak[2]); \
-//     s[3] = XOR(s[0], tweak[3]); \
-//     s[0] = XOR(s[0], tweak[0]); \
-//     s[5] = XOR(s[4], tweak[5]); \
-//     s[6] = XOR(s[4], tweak[6]); \
-//     s[7] = XOR(s[4], tweak[7]); \
-//     s[4] = XOR(s[4], tweak[4]); \
-// }
+#define ONE_ROUND8_FIXED_TWEAKEY( s, tweakey ){\
+    s[0] = ENC( s[0] ,  tweakey );\
+    s[1] = ENC( s[1] ,  tweakey );\
+    s[2] = ENC( s[2] ,  tweakey );\
+    s[3] = ENC( s[3] ,  tweakey );\
+    s[4] = ENC( s[4] ,  tweakey );\
+    s[5] = ENC( s[5] ,  tweakey );\
+    s[6] = ENC( s[6] ,  tweakey );\
+    s[7] = ENC( s[7] ,  tweakey );\
+}
+#define ONE_ROUND4_FIXED_TWEAKEY( s, tweakey ){\
+    s[0] = ENC( s[0] ,  tweakey );\
+    s[1] = ENC( s[1] ,  tweakey );\
+    s[2] = ENC( s[2] ,  tweakey );\
+    s[3] = ENC( s[3] ,  tweakey );\
+}
+// ---------------------------------------------------------
+#define DEOXYS8_FIXED_TWEAKEY( states, roundtweakeys) {\
+  ONE_ROUND8_FIXED_TWEAKEY( states , roundtweakeys[ 0] );\
+  ONE_ROUND8_FIXED_TWEAKEY( states , roundtweakeys[ 1] );\
+  ONE_ROUND8_FIXED_TWEAKEY( states , roundtweakeys[ 2] );\
+  ONE_ROUND8_FIXED_TWEAKEY( states , roundtweakeys[ 3] );\
+  ONE_ROUND8_FIXED_TWEAKEY( states , roundtweakeys[ 4] );\
+  ONE_ROUND8_FIXED_TWEAKEY( states , roundtweakeys[ 5] );\
+  ONE_ROUND8_FIXED_TWEAKEY( states , roundtweakeys[ 6] );\
+  ONE_ROUND8_FIXED_TWEAKEY( states , roundtweakeys[ 7] );\
+  ONE_ROUND8_FIXED_TWEAKEY( states , roundtweakeys[ 8] );\
+  ONE_ROUND8_FIXED_TWEAKEY( states , roundtweakeys[ 9] );\
+  ONE_ROUND8_FIXED_TWEAKEY( states , roundtweakeys[10] );\
+  ONE_ROUND8_FIXED_TWEAKEY( states , roundtweakeys[11] );\
+  ONE_ROUND8_FIXED_TWEAKEY( states , roundtweakeys[12] );\
+  ONE_ROUND8_FIXED_TWEAKEY( states , roundtweakeys[13] );\
+}
+#define DEOXYS4_FIXED_TWEAKEY( states, roundtweakeys) {\
+  ONE_ROUND4_FIXED_TWEAKEY( states , roundtweakeys[ 0] );\
+  ONE_ROUND4_FIXED_TWEAKEY( states , roundtweakeys[ 1] );\
+  ONE_ROUND4_FIXED_TWEAKEY( states , roundtweakeys[ 2] );\
+  ONE_ROUND4_FIXED_TWEAKEY( states , roundtweakeys[ 3] );\
+  ONE_ROUND4_FIXED_TWEAKEY( states , roundtweakeys[ 4] );\
+  ONE_ROUND4_FIXED_TWEAKEY( states , roundtweakeys[ 5] );\
+  ONE_ROUND4_FIXED_TWEAKEY( states , roundtweakeys[ 6] );\
+  ONE_ROUND4_FIXED_TWEAKEY( states , roundtweakeys[ 7] );\
+  ONE_ROUND4_FIXED_TWEAKEY( states , roundtweakeys[ 8] );\
+  ONE_ROUND4_FIXED_TWEAKEY( states , roundtweakeys[ 9] );\
+  ONE_ROUND4_FIXED_TWEAKEY( states , roundtweakeys[10] );\
+  ONE_ROUND4_FIXED_TWEAKEY( states , roundtweakeys[11] );\
+  ONE_ROUND4_FIXED_TWEAKEY( states , roundtweakeys[12] );\
+  ONE_ROUND4_FIXED_TWEAKEY( states , roundtweakeys[13] );\
+}
+
+// ---------------------------------------------------------
+
+
+
+
+
+
+
 
 // ---------------------------------------------------------
 
@@ -575,6 +601,22 @@
     s = ENC( s , XOR( subkeys[14] , t ) ); \
 }
 // ---------------------------------------------------------
+#define TAES_FIXED_TWEAKEY( s , tweakey)\
+    s = ENC( s , tweakey[ 0] );\
+    s = ENC( s , tweakey[ 1] );\
+    s = ENC( s , tweakey[ 2] );\
+    s = ENC( s , tweakey[ 3] );\
+    s = ENC( s , tweakey[ 4] );\
+    s = ENC( s , tweakey[ 5] );\
+    s = ENC( s , tweakey[ 6] );\
+    s = ENC( s , tweakey[ 7] );\
+    s = ENC( s , tweakey[ 8] );\
+    s = ENC( s , tweakey[ 9] );\
+    s = ENC( s , tweakey[10] );\
+    s = ENC( s , tweakey[11] );\
+    s = ENC( s , tweakey[12] );\
+    s = ENC( s , tweakey[13] );
+
 
 // Tweakable AES decryption
 #define TAESD( s , subkeys , realtweak, t)\
