@@ -156,7 +156,7 @@ typedef ALIGN(16) __m128i BLOCK;
 
 // ---------------------------------------------------------------------
 
-#define xor_eight(dst_array, src_array, constant) do { \
+#define xor_eight(dst, src_array, constant) do { \
     dst[0] = vxor(constant, src_array[0]); \
     dst[1] = vxor(constant, src_array[1]); \
     dst[2] = vxor(constant, src_array[2]); \
@@ -166,6 +166,13 @@ typedef ALIGN(16) __m128i BLOCK;
     dst[6] = vxor(constant, src_array[6]); \
     dst[7] = vxor(constant, src_array[7]); \
 } while (0)
+#define xor_four(dst, src_array, constant) do { \
+    dst[0] = vxor(constant, src_array[0]); \
+    dst[1] = vxor(constant, src_array[1]); \
+    dst[2] = vxor(constant, src_array[2]); \
+    dst[3] = vxor(constant, src_array[3]); \
+} while (0)
+
 
 // ---------------------------------------------------------------------
 
