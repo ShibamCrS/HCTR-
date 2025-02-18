@@ -122,6 +122,49 @@
   ONE_ROUND( states , subkeys[14] , tweak ,  6 );\
 }
 
+/* -------------------- FIXED_TWEAKEY--------------------------*/
+#define ONE_ROUND2_FIXED_TWEAKEY( s, tweakey) {\
+    s[0] = _mm512_aesenc_epi128(s[0], tweakey);\
+    s[1] = _mm512_aesenc_epi128(s[1], tweakey);\
+}
+
+#define DEOXYS2_FIXED_TWEAKEY( states, tweakey ) {\
+  ONE_ROUND2_FIXED_TWEAKEY( states , tweakey[ 0]);\
+  ONE_ROUND2_FIXED_TWEAKEY( states , tweakey[ 1]);\
+  ONE_ROUND2_FIXED_TWEAKEY( states , tweakey[ 2]);\
+  ONE_ROUND2_FIXED_TWEAKEY( states , tweakey[ 3]);\
+  ONE_ROUND2_FIXED_TWEAKEY( states , tweakey[ 4]);\
+  ONE_ROUND2_FIXED_TWEAKEY( states , tweakey[ 5]);\
+  ONE_ROUND2_FIXED_TWEAKEY( states , tweakey[ 6]);\
+  ONE_ROUND2_FIXED_TWEAKEY( states , tweakey[ 7]);\
+  ONE_ROUND2_FIXED_TWEAKEY( states , tweakey[ 8]);\
+  ONE_ROUND2_FIXED_TWEAKEY( states , tweakey[ 9]);\
+  ONE_ROUND2_FIXED_TWEAKEY( states , tweakey[10]);\
+  ONE_ROUND2_FIXED_TWEAKEY( states , tweakey[11]);\
+  ONE_ROUND2_FIXED_TWEAKEY( states , tweakey[12]);\
+  ONE_ROUND2_FIXED_TWEAKEY( states , tweakey[13]);\
+}
+#define ONE_ROUND_FIXED_TWEAKEY( s, tweakey) {\
+    s[0] = _mm512_aesenc_epi128(s[0], tweakey);\
+}
+
+#define DEOXYS_FIXED_TWEAKEY( states, tweakey ) {\
+  ONE_ROUND_FIXED_TWEAKEY( states , tweakey[ 0]);\
+  ONE_ROUND_FIXED_TWEAKEY( states , tweakey[ 1]);\
+  ONE_ROUND_FIXED_TWEAKEY( states , tweakey[ 2]);\
+  ONE_ROUND_FIXED_TWEAKEY( states , tweakey[ 3]);\
+  ONE_ROUND_FIXED_TWEAKEY( states , tweakey[ 4]);\
+  ONE_ROUND_FIXED_TWEAKEY( states , tweakey[ 5]);\
+  ONE_ROUND_FIXED_TWEAKEY( states , tweakey[ 6]);\
+  ONE_ROUND_FIXED_TWEAKEY( states , tweakey[ 7]);\
+  ONE_ROUND_FIXED_TWEAKEY( states , tweakey[ 8]);\
+  ONE_ROUND_FIXED_TWEAKEY( states , tweakey[ 9]);\
+  ONE_ROUND_FIXED_TWEAKEY( states , tweakey[10]);\
+  ONE_ROUND_FIXED_TWEAKEY( states , tweakey[11]);\
+  ONE_ROUND_FIXED_TWEAKEY( states , tweakey[12]);\
+  ONE_ROUND_FIXED_TWEAKEY( states , tweakey[13]);\
+}
+
 /* Tweakable AES */
 #define TAES( s , subkeys , realtweak, t)\
     t = realtweak;\
@@ -140,6 +183,23 @@
     s = ENC( s , XOR( subkeys[12] , t ) );t=PERMUTE( t );\
     s = ENC( s , XOR( subkeys[13] , t ) );t=PERMUTE( t );\
     s = ENC( s , XOR( subkeys[14] , t ) );
+
+// ---------------------------------------------------------
+#define TAES512_FIXED_TWEAKEY( s , tweakey)\
+    s = ENC4( s , tweakey[ 0] );\
+    s = ENC4( s , tweakey[ 1] );\
+    s = ENC4( s , tweakey[ 2] );\
+    s = ENC4( s , tweakey[ 3] );\
+    s = ENC4( s , tweakey[ 4] );\
+    s = ENC4( s , tweakey[ 5] );\
+    s = ENC4( s , tweakey[ 6] );\
+    s = ENC4( s , tweakey[ 7] );\
+    s = ENC4( s , tweakey[ 8] );\
+    s = ENC4( s , tweakey[ 9] );\
+    s = ENC4( s , tweakey[10] );\
+    s = ENC4( s , tweakey[11] );\
+    s = ENC4( s , tweakey[12] );\
+    s = ENC4( s , tweakey[13] );
 
 
 /* Tweakable AES decryption */

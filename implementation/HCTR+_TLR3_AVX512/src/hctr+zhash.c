@@ -255,7 +255,8 @@ void prp_encrypt(prp_ctx     * restrict ctx,
     }
     ctp[0] = S; ctp[1] = T;
 /*-------------------------------- The CTR Part -------------------------*/
-    ctr_mode(ptp + 2, ctx->round_keys_c_512, ctx->round_keys_c, (pt_len - 2*16), W, Z, ctp + 2);
+    /* ctr_mode(ptp + 2, ctx->round_keys_c_512, ctx->round_keys_c, (pt_len - 2*16), W, Z, ctp + 2); */
+    xorpp_mode(ptp + 2, ctx->round_keys_c_512, ctx->round_keys_c, (pt_len - 2*16), W, Z, ctp + 2);
 
 /* ---------------- The Lower Hash using PMAC2x -------------------------*/
 /*----------------------- Process Plaintexts ----------------------------*/

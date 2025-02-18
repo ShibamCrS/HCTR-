@@ -117,7 +117,7 @@ void multi_len_time_test() {
 }
 int main() {
     simple_test();
-    /* simple_time_test(); */
+    simple_time_test();
     /* multi_len_time_test(); */
     return 0;
 }
