@@ -12,17 +12,16 @@
 
 BLOCK phash(const BLOCK * restrict data, const BLOCK4 key4[DEOXYS_BC_128_256_NUM_ROUND_KEYS], const BLOCK key[DEOXYS_BC_128_256_NUM_ROUND_KEYS], uint64_t len, BLOCK ctr, BLOCK *X, BLOCK *Y) {
     const BLOCK4 * restrict data4 = (BLOCK4 *)data;
-    uint64_t index4, index, i;
+    uint64_t index4, index;
     index = 0; index4 = 0;
     BLOCK S, T, t;
 
     BLOCK4 RT[8], state[2], ctr4, tmp;
 
     ctr4 = _mm512_broadcast_i64x2(ctr);
-    ctr4 = ADD0123(ctr4);
     while (len >= 128) {
         RT[0] = ctr4;
-        UPDATE_TWEAK_ROUNDS_512_2(RT); // RT[1] .. RT[7] = permuted ctr XOR Z
+        UPDATE_TWEAK_ROUNDS_512_2(RT);
         ctr4 = ADD4(ctr4, eight_512);
         state[0] = data4[index4];
         state[1] = data4[index4+1];
@@ -38,7 +37,7 @@ BLOCK phash(const BLOCK * restrict data, const BLOCK4 key4[DEOXYS_BC_128_256_NUM
     }
     while (len >= 64) {
         RT[0] = ctr4;
-        UPDATE_TWEAK_ROUNDS_512(RT); // RT[1] .. RT[7] = permuted ctr XOR Z
+        UPDATE_TWEAK_ROUNDS_512(RT);
         ctr4 = ADD4(ctr4, four_512);
         state[0] = data4[index4];
         DEOXYS_HASH_INPUT_512(state, key4, RT);
@@ -52,9 +51,10 @@ BLOCK phash(const BLOCK * restrict data, const BLOCK4 key4[DEOXYS_BC_128_256_NUM
         index  += 4;
         index4 += 1;
     }
-    ctr = _mm512_extracti64x2_epi64(ctr4, 0);
+    ctr = ((BLOCK *)(&ctr4))[0];
     while (len >= 16) {
-        ctr = ADD_ONE(ctr); T = ctr; S = data[index];
+        T = ctr; S = data[index];
+        ctr = ADD_ONE(ctr); 
         TAES(S, key, T, t);
         *X = XOR(*X, S);
         *Y = Double(*Y); *Y = XOR(*Y, S);
@@ -62,9 +62,10 @@ BLOCK phash(const BLOCK * restrict data, const BLOCK4 key4[DEOXYS_BC_128_256_NUM
         index += 1;
     }
     if (len > 0) { //If the last block is not full
-        ctr = ADD_ONE(ctr); T = ctr; //DomainSep
+        T = ctr;
+        ctr = ADD_ONE(ctr); 
         S = ZERO();
-        memcpy(&S, data+index, len); //With 0* padding
+        memcpy(&S, data+index, len);
         TAES(S, key, T, t);
         *X = XOR(*X, S);
         *Y = Double(*Y); *Y = XOR(*Y, S);
@@ -79,10 +80,9 @@ void prp_encrypt(prp_ctx     * restrict ctx,
                void       *ct,
                int        encrypt)
 {
-    unsigned i, j, k, remaining=0, iters, npblks, index, local_len, index4;
     BLOCK       * ctp = (BLOCK *)ct;
-    const BLOCK * restrict ptp = (BLOCK *)pt;
-    const BLOCK * restrict tkp = (BLOCK *)tk;
+    const BLOCK * ptp = (BLOCK *)pt;
+    const BLOCK * tkp = (BLOCK *)tk;
 
     uint64_t len1 = pt_len*8;
     uint64_t len2 = tk_len*8;
@@ -102,12 +102,10 @@ void prp_encrypt(prp_ctx     * restrict ctx,
     BLOCK CTR_SAVE = ctr;
 /*-----------------------Process Plaintexts----------------------------*/
     ctr = phash(ptp+2, ctx->round_keys_h_512, ctx->round_keys_h, (pt_len - 2*16), ctr, &X, &Y);
-    ctr = ADD_ONE(ctr);
 /*--------------------------------------------------------------------*/
     //Handel Length 
     S = LEN;
-    T   = XOR(ctr, ONE);
-    TAES(S, ctx->round_keys_h, T, t);
+    TAES(S, ctx->round_keys_h, ctr, t);
     X = XOR(X, S);
     Y = Double(Y); Y = XOR(Y, S);
     //FInalization Of Hash
@@ -120,44 +118,20 @@ void prp_encrypt(prp_ctx     * restrict ctx,
     Z = XOR(ptp[0], Z);
     W = XOR(ptp[1], W);
     if(encrypt) {
-#ifdef PRINT
-    printf("U1: "); printreg(&Z, 16);
-    printf("U2: "); printreg(&W, 16);
-#endif
     TAES(Z, ctx->round_keys_1, W, t);
     T = W;
     TAES(T, ctx->round_keys_2, Z, t);
     W = XOR(T, W);
-#ifdef PRINT
-    printf("Z : "); printreg(&Z, 16);
-    printf("W : "); printreg(&W, 16);
-#endif
     S = Z;
     TAES(S, ctx->round_keys_3, T, t);
-#ifdef PRINT
-    printf("V1: "); printreg(&S, 16);
-    printf("V2: "); printreg(&T, 16);
-#endif
     }
     else {
-#ifdef PRINT
-    printf("V1: "); printreg(&Z, 16);
-    printf("V2: "); printreg(&W, 16);
-#endif
     TAESD(Z, ctx->round_keys_d_3, W, t);
     T = W;
     TAESD(T, ctx->round_keys_d_2, Z, t);
     W = XOR(T, W);
-#ifdef PRINT
-    printf("Z : "); printreg(&Z, 16);
-    printf("W : "); printreg(&W, 16);
-#endif
     S = Z;
     TAESD(S, ctx->round_keys_d_1, T, t);
-#ifdef PRINT
-    printf("U1: "); printreg(&S, 16);
-    printf("U2: "); printreg(&T, 16);
-#endif
     }
     ctp[0] = S; ctp[1] = T;
 
@@ -171,10 +145,8 @@ void prp_encrypt(prp_ctx     * restrict ctx,
     ctr = phash(ctp+2, ctx->round_keys_h_512, ctx->round_keys_h, (pt_len - 2*16), ctr, &X, &Y);
 
     //Handel Length 
-    ctr = ADD_ONE(ctr);
-    T = XOR(ctr, ONE);
     S = LEN;
-    TAES(S, ctx->round_keys_h, T, t);
+    TAES(S, ctx->round_keys_h, ctr, t);
     X = XOR(X, S);
     Y = Double(Y); Y = XOR(Y, S);
 /*----------------- Process First Two Blocks ----------------------*/

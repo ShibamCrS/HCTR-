@@ -8,7 +8,7 @@
 #include "../include/deoxysbc.h"
 #include "../include/init.h"
 
-int prp_init(prp_ctx *ctx, const void *mkey, int key_len, int tk_len){
+int prp_init(prp_ctx *ctx, const void *mkey){
     //First schedule key, which will be used to generate other keys
     BLOCK round_keys [DEOXYS_BC_128_256_NUM_ROUND_KEYS];
     DEOXYS_128_256_setup_key(mkey, round_keys);
@@ -18,7 +18,7 @@ int prp_init(prp_ctx *ctx, const void *mkey, int key_len, int tk_len){
         round_keys4[i] = _mm512_broadcast_i32x4(round_keys[i]);
 
     //At first derive 4 keys in parallel
-    BLOCK States[4], S1, S2, T, t;
+    BLOCK States[4], S1, T, t;
     T = FOUR;
     BLOCK4 RT[8];
     RT[0] = _mm512_broadcast_i32x4(T);

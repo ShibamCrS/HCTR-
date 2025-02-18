@@ -150,7 +150,7 @@ void ctr_mode(const BLOCK *ptp, const BLOCK4 key4[DEOXYS_BC_128_256_NUM_ROUND_KE
     BLOCK S, T, t, ctr;
 
     BLOCK4 state[2], RT[8], tmp, ctr4;
-    ctr4 = CTR3210;
+    ctr4 = CTR4321;
 
     BLOCK4 WW = zbroadcast(W);
     BLOCK4 ZZ = zbroadcast(Z);
@@ -170,7 +170,6 @@ void ctr_mode(const BLOCK *ptp, const BLOCK4 key4[DEOXYS_BC_128_256_NUM_ROUND_KE
         index  += 8;
         len -= 128;
     }
-
     while (len >= 64) {
         RT[0] = XOR4(ctr4, ZZ);
         UPDATE_TWEAK_ROUNDS_512(RT);
@@ -184,14 +183,13 @@ void ctr_mode(const BLOCK *ptp, const BLOCK4 key4[DEOXYS_BC_128_256_NUM_ROUND_KE
         index  += 4;
         len -= 64;
     }
-    /* ctr = _mm512_extracti64x2_epi64(ctr4, 0); */
     ctr = ((BLOCK *)(&ctr4))[0];
     while (len > 0) {
         T = XOR(ctr, Z);
+        ctr = ADD_ONE(ctr); 
         S = W;
         TAES(S, key, T, t);
         ctp[index] = XOR(S, ptp[index]);
-        ctr = ADD_ONE(ctr); 
         index += 1;
         len -= 16;
     }

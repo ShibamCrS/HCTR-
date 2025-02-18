@@ -29,11 +29,11 @@ void zhash(const BLOCK * data, const BLOCK key[DEOXYS_BC_128_256_NUM_ROUND_KEYS]
         SR[0][2]  = XOR(*Lr, data[index +  5]); *Lr = Double(*Lr); 
         SR[0][3]  = XOR(*Lr, data[index +  7]); *Lr = Double(*Lr); 
         
-        SR[0][0] = TRUNC(SR[0][0],ONE);\
-        SR[0][1] = TRUNC(SR[0][1],ONE);\
-        SR[0][2] = TRUNC(SR[0][2],ONE);\
+        SR[0][0] = TRUNC(SR[0][0],ONE);
+        SR[0][1] = TRUNC(SR[0][1],ONE);
+        SR[0][2] = TRUNC(SR[0][2],ONE);
         SR[0][3] = TRUNC(SR[0][3],ONE);
-
+        
         for(i=1; i<8; i++){ //UPDATE_TWEAK 
             SR[i][0] = PERMUTE(SR[i-1][0]);
             SR[i][1] = PERMUTE(SR[i-1][1]);

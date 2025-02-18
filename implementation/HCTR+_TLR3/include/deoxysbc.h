@@ -556,7 +556,7 @@
 // ---------------------------------------------------------
 
 // Tweakable AES
-#define TAES( s , subkeys , realtweak, t)\
+#define TAES( s , subkeys , realtweak, t) { \
     t = realtweak;\
     s = XOR( s , XOR( subkeys[ 0] , t ) );t=PERMUTE( t );\
     s = ENC( s , XOR( subkeys[ 1] , t ) );t=PERMUTE( t );\
@@ -572,8 +572,8 @@
     s = ENC( s , XOR( subkeys[11] , t ) );t=PERMUTE( t );\
     s = ENC( s , XOR( subkeys[12] , t ) );t=PERMUTE( t );\
     s = ENC( s , XOR( subkeys[13] , t ) );t=PERMUTE( t );\
-    s = ENC( s , XOR( subkeys[14] , t ) );
-
+    s = ENC( s , XOR( subkeys[14] , t ) ); \
+}
 // ---------------------------------------------------------
 
 // Tweakable AES decryption

@@ -35,7 +35,7 @@ void zhash(const BLOCK * data, const BLOCK4 key4[DEOXYS_BC_128_256_NUM_ROUND_KEY
     BLOCK T, t, S, Lll[4], Lrr[4];
     BLOCK4 *Ll4, *Lr4, A[4], B[4];
 
-    BLOCK4 SL4[4], SR4[4][8];
+    BLOCK4 SL4[4], SR4[8][4], SRR4[8];
 
     Lll[0] = *Ll;             
     Lll[1] = Double(Lll[0]);             
@@ -67,36 +67,29 @@ void zhash(const BLOCK * data, const BLOCK4 key4[DEOXYS_BC_128_256_NUM_ROUND_KEY
         Lr4[0] = mult4by4(Lr4[0]);
        
         SL4[1]    = XOR4(Ll4[0], A[1]);
-        SR4[1][0] = XOR4(Lr4[0], B[1]);
+        SR4[0][1] = XOR4(Lr4[0], B[1]);
         Ll4[0] = mult4by4(Ll4[0]);
         Lr4[0] = mult4by4(Lr4[0]);
 
         SL4[2]    = XOR4(Ll4[0], A[2]);
-        SR4[2][0] = XOR4(Lr4[0], B[2]);
+        SR4[0][2] = XOR4(Lr4[0], B[2]);
         Ll4[0] = mult4by4(Ll4[0]);
         Lr4[0] = mult4by4(Lr4[0]);
         
         SL4[3]    = XOR4(Ll4[0], A[3]);
-        SR4[3][0] = XOR4(Lr4[0], B[3]);
+        SR4[0][3] = XOR4(Lr4[0], B[3]);
         Ll4[0] = mult4by4(Ll4[0]);
         Lr4[0] = mult4by4(Lr4[0]);
 
-        /* TRUNC4_four(SR4[0][0], SR4[1][0], SR4[2][0], SR4[3][0]); */
         SR4[0][0] = TRUNC4(SR4[0][0], ONE4);
+        SR4[0][1] = TRUNC4(SR4[0][1], ONE4);
+        SR4[0][2] = TRUNC4(SR4[0][2], ONE4);
+        SR4[0][3] = TRUNC4(SR4[0][3], ONE4);
         for(i=1; i<8; i++){ //UPDATE_TWEAK
-            SR4[0][i] = PERMUTE_512(SR4[0][i-1]);
-        }
-        SR4[1][0] = TRUNC4(SR4[1][0], ONE4);
-        for(i=1; i<8; i++){ //UPDATE_TWEAK
-            SR4[1][i] = PERMUTE_512(SR4[1][i-1]);
-        }
-        SR4[2][0] = TRUNC4(SR4[2][0], ONE4);
-        for(i=1; i<8; i++){ //UPDATE_TWEAK
-            SR4[2][i] = PERMUTE_512(SR4[2][i-1]);
-        }
-        SR4[3][0] = TRUNC4(SR4[3][0], ONE4);
-        for(i=1; i<8; i++){ //UPDATE_TWEAK
-            SR4[3][i] = PERMUTE_512(SR4[3][i-1]);
+            SR4[i][0] = PERMUTE_512(SR4[i-1][0]);
+            SR4[i][1] = PERMUTE_512(SR4[i-1][1]);
+            SR4[i][2] = PERMUTE_512(SR4[i-1][2]);
+            SR4[i][3] = PERMUTE_512(SR4[i-1][3]);
         }
         DEOXYS4( SL4, key4, SR4 )
         *U = gf_2_128_double_16(*U, SL);
@@ -120,18 +113,16 @@ void zhash(const BLOCK * data, const BLOCK4 key4[DEOXYS_BC_128_256_NUM_ROUND_KEY
         Lr4[0] = mult4by4(Lr4[0]);
        
         SL4[1]    = XOR4(Ll4[0], A[1]);
-        SR4[1][0] = XOR4(Lr4[0], B[1]);
+        SR4[0][1] = XOR4(Lr4[0], B[1]);
         Ll4[0] = mult4by4(Ll4[0]);
         Lr4[0] = mult4by4(Lr4[0]);
 
         /* TRUNC4_two(SR4[0][0], SR4[1][0]); */
         SR4[0][0] = TRUNC4(SR4[0][0], ONE4);
+        SR4[0][1] = TRUNC4(SR4[0][1], ONE4);
         for(i=1; i<8; i++){ //UPDATE_TWEAK
-            SR4[0][i] = PERMUTE_512(SR4[0][i-1]);
-        }
-        SR4[1][0] = TRUNC4(SR4[1][0], ONE4);
-        for(i=1; i<8; i++){ //UPDATE_TWEAK
-            SR4[1][i] = PERMUTE_512(SR4[1][i-1]);
+            SR4[i][0] = PERMUTE_512(SR4[i-1][0]);
+            SR4[i][1] = PERMUTE_512(SR4[i-1][1]);
         }
         DEOXYS2( SL4, key4, SR4 )
         *U = gf_2_128_double_eight(*U, SL);
@@ -146,16 +137,16 @@ void zhash(const BLOCK * data, const BLOCK4 key4[DEOXYS_BC_128_256_NUM_ROUND_KEY
     while (len >= 128) {
         A[0] = _mm512_shuffle_i64x2(data4[index4], data4[index4 + 1], _MM_SHUFFLE(2, 0, 2, 0));
         B[0] = _mm512_shuffle_i64x2(data4[index4], data4[index4 + 1], _MM_SHUFFLE(3, 1, 3, 1));
-        SL4[0]    = XOR4(Ll4[0], A[0]);
-        SR4[0][0] = XOR4(Lr4[0], B[0]);
-        Ll4[0] = mult4by4(Ll4[0]);
-        Lr4[0] = mult4by4(Lr4[0]);
+        SL4[0]  = XOR4(Ll4[0], A[0]);
+        SRR4[0] = XOR4(Lr4[0], B[0]);
+        Ll4[0]  = mult4by4(Ll4[0]);
+        Lr4[0]  = mult4by4(Lr4[0]);
 
-        SR4[0][0] = TRUNC4(SR4[0][0], ONE4);
+        SRR4[0] = TRUNC4(SRR4[0], ONE4);
         for(i=1; i<8; i++){ //UPDATE_TWEAK
-            SR4[0][i] = PERMUTE_512(SR4[0][i-1]);
+            SRR4[i] = PERMUTE_512(SRR4[i-1]);
         }
-        DEOXYS( SL4[0], key4, SR4[0] )
+        DEOXYS( SL4[0], key4, SRR4 )
         *U = gf_2_128_double_four(*U, SL);
         SL4[0] = XOR4(SL4[0], B[0]);
         accumulate_four_stateful(*V, SL);
@@ -198,12 +189,11 @@ void prp_encrypt(prp_ctx     * restrict ctx,
                void       *ct,
                int        encrypt)
 {
-    unsigned i, j, k, remaining=0, iters, npblks, index, local_len, index4;
     BLOCK       *          ctp = (BLOCK *)ct;
     const BLOCK * restrict ptp = (BLOCK *)pt;
     const BLOCK * restrict tkp = (BLOCK *)tk;
 
-    BLOCK U, V, Z, W, ctr;
+    BLOCK U, V, Z, W;
     BLOCK T, t, S;
 
     uint64_t len1 = pt_len*8;
@@ -217,7 +207,6 @@ void prp_encrypt(prp_ctx     * restrict ctx,
     TAES(Ll, ctx->round_keys_h, T, t);
     T = ADD_ONE(T);
     TAES(Lr, ctx->round_keys_h, T, t);
-    BLOCK XX[4];
     
     U = ZERO();
     V = ZERO();

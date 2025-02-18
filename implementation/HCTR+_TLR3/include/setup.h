@@ -19,6 +19,7 @@
 #define AND(a,b)       _mm_and_si128(a,b)
 #define OR(a,b)        _mm_or_si128(a,b)
 #define ADD_ONE(b)     _mm_add_epi64(b,_mm_set_epi64x(0UL,1UL))
+#define ADD_ONE32(b)     _mm_add_epi32(b,_mm_set_epi32(0, 0, 0,1))
 #define ADD_EIGHT(b)   _mm_add_epi64(b,_mm_set_epi64x(0UL,8UL))
 #define ZERO()         _mm_setzero_si128()
 #define ONE     _mm_set_epi8( 0b00100000, 0,0,0, 0,0,0,0, 0,0,0,0, 0,0,0,0 )

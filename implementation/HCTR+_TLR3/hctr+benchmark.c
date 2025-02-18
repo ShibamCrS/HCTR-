@@ -26,7 +26,6 @@ void printkeys(prp_ctx     * restrict ctx) {
 }
 
 #define VAL_LEN  65536
-/* #define VAL_LEN  256 */
 #define TWK_LEN  512
 void simple_test() {
     ALIGN(16) unsigned char key[16] = {0x2B,0x7E,0x15,0x16,0x28,0xAE,0xD2,0xA6,0xAB,0xF7,0x15,0x88,0x09,0xCF,0x4F,0x3C};
@@ -37,6 +36,8 @@ void simple_test() {
     ALIGN(16) unsigned char dt[VAL_LEN];
 
     for (int i=0; i < VAL_LEN; i++) pt[i] = 'a'+(i%3);
+    for (int i=0; i < VAL_LEN; i++) ct[i] = 'a'+(i%3);
+    for (int i=0; i < VAL_LEN; i++) dt[i] = 'a'+(i%3);
     for (int i=0; i < TWK_LEN; i++) tk[i] = 'a'+(i%3);
 
     prp_ctx *ctx = prp_allocate(NULL);
@@ -66,6 +67,8 @@ void simple_time_test() {
     ALIGN(16) unsigned char dt[VAL_LEN];
 
     for (int i=0; i < VAL_LEN; i++) pt[i] = 'a'+(i%3);
+    for (int i=0; i < VAL_LEN; i++) ct[i] = 'a'+(i%3);
+    for (int i=0; i < VAL_LEN; i++) dt[i] = 'a'+(i%3);
     for (int i=0; i < TWK_LEN; i++) tk[i] = 'a'+(i%3);
 
     prp_ctx *ctx = prp_allocate(NULL);
@@ -114,8 +117,8 @@ void multi_len_time_test() {
 }
 int main() {
     simple_test();
-    simple_time_test();
-    multi_len_time_test();
+    /* simple_time_test(); */
+    /* multi_len_time_test(); */
     return 0;
 }
 

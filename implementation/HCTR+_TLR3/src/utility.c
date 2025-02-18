@@ -100,10 +100,10 @@ BLOCK gf_2_128_double_eight(BLOCK Y, BLOCK *S) {
 }
 void ctr_mode(const BLOCK *ptp, const BLOCK key[DEOXYS_BC_128_256_NUM_ROUND_KEYS], uint64_t len, BLOCK W, BLOCK Z, BLOCK *ctp) {
     
+    BLOCK S, T, ctr, tmp;
     BLOCK RT[8];
     BLOCK States[8];
-    BLOCK tmp;
-    BLOCK ctr = one_be;
+    ctr = one_be;
 
     uint64_t index = 0;
 
@@ -144,14 +144,21 @@ void ctr_mode(const BLOCK *ptp, const BLOCK key[DEOXYS_BC_128_256_NUM_ROUND_KEYS
         index += 4;
         len -= 64;
     }
+    W = XOR(W, key[0]);
+    while (len > 0) {
+        T = XOR(ctr, Z);
+        S = W;
+        TAES(S, key, T, tmp);
+        ctp[index] = XOR(S, ptp[index]);
+        ctr = ADD_ONE(ctr);
+        index += 1;
+        len -= 16;
+    }
     
-    /* uint64_t index, i; */
-    /* index = 0; */
+
     /* BLOCK RT[8][8]; */
-    /* BLOCK States[8]; */
-
-    /* BLOCK ctr = ZERO(); */
-
+    /* ctr = ZERO(); */
+    /* int i; */
     /* while (len >= 128) { */
     /*     ctr =  ADD_ONE(ctr); RT[0][0] = XOR(ctr, Z); */
     /*     ctr =  ADD_ONE(ctr); RT[0][1] = XOR(ctr, Z); */
@@ -212,15 +219,13 @@ void ctr_mode(const BLOCK *ptp, const BLOCK key[DEOXYS_BC_128_256_NUM_ROUND_KEYS
     /*     index += 4; */
     /*     len -= 64; */
     /* } */
-
-    BLOCK S, T, t;
-    while (len > 0) {
-        ctr = ADD_ONE(ctr); T = XOR(ctr, Z);
-        S = W;
-        TAES(S, key, T, t);
-        ctp[index] = XOR(S, ptp[index]);
-        index += 1;
-        len -= 16;
-    }
+    /* while (len > 0) { */
+    /*     ctr = ADD_ONE(ctr); T = XOR(ctr, Z); */
+    /*     S = W; */
+    /*     TAES(S, key, T, tmp); */
+    /*     ctp[index] = XOR(S, ptp[index]); */
+    /*     index += 1; */
+    /*     len -= 16; */
+    /* } */
 
 }

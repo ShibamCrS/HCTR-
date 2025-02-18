@@ -21,9 +21,7 @@ int     prp_clear      (prp_ctx *ctx); /* Undo initialization                 */
 int     prp_ctx_sizeof(void);        /* Return sizeof(ae_ctx)               */
 
 int prp_init(prp_ctx     *ctx,
-            const void *key,
-            int         key_len,
-            int         tweak_len);
+            const void *key);
 void prp_encrypt(prp_ctx     *ctx,
             const void *pt,
             uint64_t    pt_len,

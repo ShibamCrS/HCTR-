@@ -1,4 +1,4 @@
-FLAGS=-O3 -march=native #-g -fsanitize=address
+FLAGS=-O3 -march=native -Wall -Wextra -Wformat=0 #-g -fsanitize=address
 CC=gcc
 
 all: hctr+phash_validation hctr+zhash_validation hctr+phash_benchmark hctr+zhash_benchmark 

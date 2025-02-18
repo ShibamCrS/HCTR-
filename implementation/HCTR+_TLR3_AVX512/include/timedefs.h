@@ -23,14 +23,10 @@
   #error -- Architechture not supported!
 #endif
 
-
-
-/* #define STAMP ({unsigned res; __asm__ __volatile__ ("rdtsc" : "=a"(res) : : "edx"); res;}) /1* Time stamp *1/ */
-
 #define DO(x) do { \
 int i,j; \
 for (i = 0; i < M; i++) { \
-unsigned c2, c1;\
+unsigned c1;\
 for(j=0;j<CACHE_WARM_ITER;j++) {x;}\
 c1 = STAMP;\
 for (j = 1; j <= N; j++) { x; }\
@@ -112,6 +108,7 @@ void getCompilerConfig(char *outp) {
 int getTimeMy(char *infoString, char *filename) {
     /* Allocate locals */
     char pt[65536] = {0};
+    char ct[65536] = {0};
     unsigned char tk[65536];  // = "abcdefghijklmnopabcdefghijklmnop";  //2n bit tweak
     unsigned char key[] = "abcdefghijklmnop";
     char outbuf[MAX_ITER*15+1024];
@@ -119,36 +116,23 @@ int getTimeMy(char *infoString, char *filename) {
     prp_ctx *ctx = prp_allocate(NULL);
     char *outp = outbuf;
     int i, j, k, len, twk_len;
-    double Hz;
-    double ipi=0, tmpd;
+    double tmpd;
     
     /* populate iter_list, terminate list with negative number */
-    int msg_len_list[EXP] = {1024, 2048, 4096, 8192, 16384, 32768, 65536, -1}; 
-    int twk_len_list[EXP] = {0, 16, 256, 512, 1024, -1}; 
-    /* int twk_len_list[EXP] = {16, -1}; */ 
+    int msg_len_list[EXP] = {1024, 2048, 4096, 8192, 16384, 32768, 65536, 2*65536, -1}; 
+    int twk_len_list[EXP] = {0, 16, 256, -1}; 
 
     FILE *fp = fopen(filename, "w");
-    char str_time[25];
-    time_t tmp_time = time(NULL);
-    struct tm *tp = localtime(&tmp_time);
-    strftime(str_time, sizeof(str_time), "%F %R", tp);
-    
     outp += sprintf(outp, "%s ", infoString);
-    /* getCompilerConfig(outp); */
-    outp += sprintf(outp, " : Run Date/Time %s\n\n",str_time);
     
-    int sum = 0, suc = 0;
     //get AE initialization Time
     outp += sprintf(outp, "Context Size: %d bytes\n", prp_ctx_sizeof());
-    DO(prp_init(ctx, key, 16, 16));
+    DO(prp_init(ctx, key));
     num_values = 0;
-    DO(suc = prp_init(ctx, key, 16, 16);key[5] = ((unsigned char *)(&ctx->round_keys_1[    14]))[0]);
+    DO(prp_init(ctx, key);key[5] = ((unsigned char *)(&ctx->round_keys_1[    14]))[0]);
     printf("Key setup: %6.2f cycles\n\n", ((median_get())/(double)N));
     outp += sprintf(outp, "Key setup: %6.2f cycles\n\n", ((median_get())/(double)N));
 
-     /*
-     * Get times over different lengths
-     */
     
     outp += sprintf(outp,        "MsgLen TwkLen CPB   \n");
     i = 0;
@@ -159,9 +143,8 @@ int getTimeMy(char *infoString, char *filename) {
         while(twk_len >= 0) {
             for (k = 0; k < len; k++) pt[k] = rand();
             for (k = 0; k < twk_len; k++) tk[k] = rand();
-            DO(prp_encrypt(ctx, pt, len, tk, twk_len, pt, 1); tk[twk_len - 2] += 1);
-            /* DO(prp_encrypt(ctx, pt, len, tk, twk_len, pt, 1);); */
-            tmpd = ((median_get())/((double)(len+twk_len)*(double)N));
+            DO(prp_encrypt(ctx, pt, len, tk, twk_len, ct, 1); pt[0]=ct[0]);
+            tmpd = (median_get())/((double)(len + twk_len)*(double)N);
             outp += sprintf(outp, "%5d %5d  %6.2f\n", len, twk_len, tmpd);
             ++j;
             twk_len = twk_len_list[j];
